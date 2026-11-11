@@ -94,6 +94,15 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: inspect-minikube
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-inspect.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "9. Inspect cluster"
+      group:
+        kind: run
+        isDefault: false
   - id: openshell-version
     exec:
       component: tools

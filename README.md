@@ -219,6 +219,7 @@ The sandbox project cannot install the gateway. It cannot create CRDs, namespace
 | 6. Ask Granite | `bash scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
 | 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
 | 8. Clean | `bash scripts/sandbox-down.sh` |
+| 9. Inspect cluster | `bash scripts/sandbox-vm-inspect.sh` |
 
 **OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand.
 
@@ -246,6 +247,26 @@ openshell sandbox create \
 OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
 Commands 6 and 7 do not use the VM. There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running them. Command 8 deletes `minikube-vm` and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+
+Command 9 prints the same objects from the workspace shell. `oc` sees the VirtualMachine. `openshell` sees `model-check`. `kubectl` for minikube runs inside the guest, over SSH:
+
+```bash
+export PATH="${HOME}/.local/bin:${PATH}"
+oc get vm,vmi,dv,svc,pod -l app.kubernetes.io/part-of=hello-openshell
+openshell gateway select minikube
+openshell sandbox list
+openshell logs model-check
+openshell policy get model-check --full
+
+ssh -i "${HOME}/.config/hello-openshell/minikube_ed25519" \
+  -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=accept-new \
+  -o UserKnownHostsFile="${HOME}/.config/hello-openshell/known_hosts" \
+  "fedora@minikube-vm.$(oc project -q).svc.cluster.local" \
+  'sudo minikube status; sudo kubectl get pods -A; sudo kubectl logs -n openshell openshell-0 --tail=40; sudo kubectl logs -n openshell default--model-check -c agent --tail=40; sudo kubectl logs -n openshell default--model-check -c supervisor --tail=40; sudo journalctl -u hello-openshell-gateway -n 20 --no-pager'
+```
+
+`openshell-0` is the gateway. `default--model-check` is the sandbox pod. If that name is absent, the `kubectl get pods -A` line above is the list to use. The guest boot log is `sudo tail -n 80 /var/log/cloud-init-output.log` on the same SSH command.
 
 Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 
