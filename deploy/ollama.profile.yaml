@@ -19,6 +19,8 @@ endpoints:
 binaries:
   - /usr/bin/python3
   - /usr/bin/python3.*
+  - /usr/sbin/python3
+  - /usr/sbin/python3.*
   - /usr/local/bin/python3
   - /usr/local/bin/python3.*
   - /opt/app-root/bin/python3

@@ -33,7 +33,7 @@ Windows 11, Podman 6.1.4, machine `podman-machine-default`:
 - Ollama 0.40.16 listens on port `11434` inside the machine. With WSL NAT (`networkingMode=nat`), Windows reaches it on the machine `eth0` IPv4. In this run that address was `172.21.235.119`. Inside the machine, `127.0.0.1:11434` answers.
 - `llama3.2:1b` (about 1.3 GB) answered `Hola.` With the model loaded, `podman stats` showed 3.19 GiB of 3.22 GiB.
 - OpenShell RPMs `0.1.8-1.fc44` (`openshell`, `openshell-gateway`, `openshell-prover`). `openshell status` connected to `https://127.0.0.1:17670`. `socket_path = "/run/podman/podman.sock"` was added under `[openshell.drivers.podman]`.
-- Sandbox `model-check` (`python:3.12-alpine`) listed `llama3.2:1b` through `host.openshell.internal:11434`. `hello-agent` ran `examples/ask.py`. The policy log recorded `HTTP:POST ALLOWED`.
+- Sandbox `model-check` on `registry.access.redhat.com/hi/python:3.12` listed `llama3.2:1b` through `host.openshell.internal:11434`. `ask.py` in that image returned a Spanish sentence. Python in the image is `/usr/bin/python3.12` (3.12.16). The policy [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) sets UID and GID `65532`.
 
 The Llama Stack starter image (`docker.io/ogxai/distribution-starter`, about 3.4 GB compressed) is not part of this path. `docker.io/ogx/distribution-starter` is denied by the registry, and the real image saturated this machine.
 
@@ -48,7 +48,7 @@ The Llama Stack starter image (`docker.io/ogxai/distribution-starter`, about 3.4
 | Model | `llama3.2:1b` |
 | API inside the machine | `http://127.0.0.1:11434/v1` |
 | API from Windows | `http://<eth0-ipv4>:11434/v1` |
-| Sandbox image | `docker.io/library/python:3.12-alpine` |
+| Sandbox image | `registry.access.redhat.com/hi/python:3.12` |
 
 ## Before you start
 
@@ -156,16 +156,17 @@ openshell provider get ollama
 
 ## 4. First sandbox
 
-`python:3.12-alpine` is the small image. Python is `/usr/local/bin/python3`.
+The sandbox image is the [Red Hat Hardened Image for Python 3.12](https://catalog.redhat.com/en/software/containers/hi/python/69c576bbbea7c4011384c57a), `registry.access.redhat.com/hi/python:3.12`. The interpreter is `/usr/bin/python3.12`. That image runs as UID `65532`, and the account's primary group in `/etc/passwd` is `0`. OpenShell rejects group `0`, so [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) sets `run_as_user` and `run_as_group` to `65532`.
 
 ```bash
 export MODEL_NAME=llama3.2:1b
 
 openshell sandbox create \
   --name model-check \
-  --from docker.io/library/python:3.12-alpine \
+  --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
-  -- /usr/local/bin/python3 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'
 ```
 
 The body is the same JSON the host returned. A log line `resolves to always-blocked address` means the URL used `127.0.0.1` or `localhost`.
@@ -177,12 +178,13 @@ The body is the same JSON the host returned. A log line `resolves to always-bloc
 ```bash
 openshell sandbox create \
   --name hello-agent \
-  --from docker.io/library/python:3.12-alpine \
+  --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
+  --policy deploy/hi-python.policy.yaml \
   --env OPENAI_BASE_URL=http://host.openshell.internal:11434/v1 \
   --env "MODEL_NAME=${MODEL_NAME}" \
   --env OPENAI_API_KEY=fake \
-  -- /usr/local/bin/python3 -c "$(cat examples/ask.py)"
+  -- /usr/bin/python3.12 -c "$(cat examples/ask.py)"
 ```
 
 `$(cat examples/ask.py)` expands in the shell at the repository root. OpenShell warns that `OPENAI_API_KEY` is visible to the process. Here the value is `fake`. On this machine the sandbox printed a sentence from the model and the policy log stayed on `ALLOWED`.
@@ -197,7 +199,7 @@ podman stats --no-stream ollama
 
 ## Developer Sandbox
 
-Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary). Other tasks wait until you choose them (**Terminal → Run Task…**).
+Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary, into `~/.local/bin`). A failed install no longer stops the workspace. Other tasks wait until you choose them (**Terminal → Run Task…**).
 
 Checked on 11 November 2026 against `https://api.rm2.thpm.p1.openshiftapps.com:6443` as `maximilianopizarro5`, project `maximilianopizarro5-dev`, OpenShift 4.22.22:
 
@@ -235,7 +237,8 @@ The admin path (OpenShift 4.19+, Agent Sandbox v1.0.10, Helm chart 0.1.8, vLLM c
 | `curl` to `127.0.0.1:11434` from Windows returns connection refused | Use `OLLAMA_IP` from step 1. Inside the machine, `127.0.0.1:11434` answers. |
 | The gateway creates no containers | `socket_path` must be the daemon `podman ps` uses from Windows. Here that is `/run/podman/podman.sock`. |
 | The sandbox exits and the log names Landlock or seccomp | The machine kernel refused the filter. OpenShell 0.1.8 does not start the sandbox without that check. |
-| `no matching policy` names a binary | On Alpine the interpreter is `/usr/local/bin/python3`. Add that path, keep `resource_version`, and run `openshell profile update`. |
+| `no matching policy` names a binary | On the hardened image the interpreter is `/usr/bin/python3.12`. Add that path, keep `resource_version`, and run `openshell profile update`. |
+| `configure an explicit workload group` | The image user `65532` has primary group `0`. Pass `--policy deploy/hi-python.policy.yaml`. |
 | `resolves to always-blocked address` | The sandbox URL uses loopback. Use `host.openshell.internal`. |
 
 To update a profile that is already imported:

@@ -90,10 +90,11 @@ openshell provider get ollama</code></pre>
       <h2><span>4</span>Listar modelos desde un sandbox</h2>
       <pre><code>openshell sandbox create \
   --name model-check \
-  --from docker.io/library/python:3.12-alpine \
+  --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
-  -- /usr/local/bin/python3 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'</code></pre>
-      <p>El JSON tiene que incluir <code>llama3.2:1b</code>.</p>
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'</code></pre>
+      <p>El JSON tiene que incluir <code>llama3.2:1b</code>. El usuario de la imagen es el UID 65532 y su grupo primario es 0, así que la política fija usuario y grupo en 65532.</p>
     </article>
     <article class="step">
       <h2><span>5</span>Preguntar con ask.py</h2>
@@ -104,12 +105,13 @@ openshell provider get ollama</code></pre>
       <pre><code>export MODEL_NAME=llama3.2:1b
 openshell sandbox create \
   --name hello-agent \
-  --from docker.io/library/python:3.12-alpine \
+  --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
+  --policy deploy/hi-python.policy.yaml \
   --env OPENAI_BASE_URL=http://host.openshell.internal:11434/v1 \
   --env "MODEL_NAME=${MODEL_NAME}" \
   --env OPENAI_API_KEY=fake \
-  -- /usr/local/bin/python3 -c "$(cat examples/ask.py)"</code></pre>
+  -- /usr/bin/python3.12 -c "$(cat examples/ask.py)"</code></pre>
       <p>En esta máquina el modelo devolvió una frase y el log quedó en <code>HTTP:POST ALLOWED</code>.</p>
     </article>
     <article class="step">

@@ -31,6 +31,15 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: install-openshell-cli-on-start
+    exec:
+      component: tools
+      commandLine: bash -c 'i=0; while [ ! -f scripts/install-openshell-cli.sh ] && [ "$i" -lt 15 ]; do i=$((i+1)); sleep 2; done; bash scripts/install-openshell-cli.sh || echo "OpenShell CLI was not installed. Run the Install OpenShell CLI task."'
+      workingDir: ${PROJECT_SOURCE}
+      label: Install OpenShell CLI on start
+      group:
+        kind: run
+        isDefault: false
   - id: openshell-version
     exec:
       component: tools
@@ -78,4 +87,4 @@ commands:
         isDefault: false
 events:
   postStart:
-    - install-openshell-cli
+    - install-openshell-cli-on-start

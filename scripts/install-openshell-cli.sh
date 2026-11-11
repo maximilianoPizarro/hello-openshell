@@ -17,21 +17,19 @@ case "$(uname -m)" in
     ;;
 esac
 
-if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-  DEST="/usr/local/bin"
-  install_bin() { sudo install -m 0755 "$1" "${DEST}/openshell"; }
-else
-  DEST="${HOME}/.local/bin"
-  mkdir -p "$DEST"
-  install_bin() { install -m 0755 "$1" "${DEST}/openshell"; }
-  case ":${PATH}:" in
-    *":${DEST}:"*) ;;
-    *)
-      printf '\nexport PATH="%s:${PATH}"\n' "$DEST" >> "${HOME}/.bashrc"
-      export PATH="${DEST}:${PATH}"
-      ;;
-  esac
-fi
+# A kubelet postStart hook has no TTY. sudo there can exit 2 and kill the workspace.
+DEST="${HOME:-/tmp}/.local/bin"
+mkdir -p "$DEST"
+install_bin() { install -m 0755 "$1" "${DEST}/openshell"; }
+case ":${PATH:-}:" in
+  *":${DEST}:"*) ;;
+  *)
+    if [ -n "${HOME:-}" ]; then
+      printf '\n# openshell-cli\nexport PATH="%s:${PATH}"\n' "$DEST" >> "${HOME}/.bashrc"
+    fi
+    export PATH="${DEST}:${PATH:-}"
+    ;;
+esac
 
 if "${DEST}/openshell" version 2>/dev/null | grep -q "${ASSET_VERSION}"; then
   echo "openshell ${ASSET_VERSION} is already in ${DEST}"
@@ -43,7 +41,7 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 url="https://github.com/NVIDIA/OpenShell/releases/download/${VERSION}/openshell-${ARCH}-unknown-linux-musl.tar.gz"
 echo "Downloading ${url}"
-curl -fsSL "$url" -o "${tmpdir}/openshell.tgz"
+curl -fL --retry 3 --retry-delay 2 "$url" -o "${tmpdir}/openshell.tgz"
 tar -xzf "${tmpdir}/openshell.tgz" -C "$tmpdir"
 install_bin "${tmpdir}/openshell"
 echo "Installed ${DEST}/openshell"

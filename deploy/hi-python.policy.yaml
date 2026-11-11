@@ -1,0 +1,27 @@
+version: 1
+
+filesystem_policy:
+  include_workdir: true
+  read_only:
+    - /bin
+    - /usr
+    - /lib
+    - /lib64
+    - /proc
+    - /dev/urandom
+    - /etc
+    - /var/log
+  read_write:
+    - /sandbox
+    - /tmp
+    - /dev/null
+
+landlock:
+  compatibility: best_effort
+
+# registry.access.redhat.com/hi/python:3.12 sets USER 65532. That account's
+# primary group in /etc/passwd is 0, which OpenShell rejects. Pin both
+# explicitly so the sandbox does not fall back to the image group.
+process:
+  run_as_user: "65532"
+  run_as_group: "65532"
