@@ -263,10 +263,10 @@ ssh -i "${HOME}/.config/hello-openshell/minikube_ed25519" \
   -o StrictHostKeyChecking=accept-new \
   -o UserKnownHostsFile="${HOME}/.config/hello-openshell/known_hosts" \
   "fedora@minikube-vm.$(oc project -q).svc.cluster.local" \
-  'sudo minikube status; sudo kubectl get pods -A; sudo kubectl logs -n openshell openshell-0 --tail=40; sudo kubectl logs -n openshell default--model-check -c agent --tail=40; sudo kubectl logs -n openshell default--model-check -c supervisor --tail=40; sudo journalctl -u hello-openshell-gateway -n 20 --no-pager'
+  'sudo minikube status; sudo kubectl get pods -A; sudo kubectl logs -n openshell openshell-0 --tail=40; sudo kubectl logs -n openshell default--model-check -c agent --tail=40; sudo journalctl -u hello-openshell-gateway -n 20 --no-pager'
 ```
 
-`openshell-0` is the gateway. `default--model-check` is the sandbox pod. If that name is absent, the `kubectl get pods -A` line above is the list to use. The guest boot log is `sudo tail -n 80 /var/log/cloud-init-output.log` on the same SSH command.
+`openshell-0` is the gateway. `default--model-check` is the sandbox pod. Its containers are `agent` and the init containers `openshell-sandbox-bootstrap` and `workspace-init`. There is no `supervisor` container. The supervisor session is a line in the `openshell-0` log (`ConnectSupervisor`, then `policy status=loaded`, then `ReportMainProcessExit` and `FinalizeMainProcessExit` when the process finishes). A later line `resourceVersion for the provided watch is too old` is an expired Kubernetes watch. The next list still runs. `watched_count=0` means no provider is configured. If the pod name is absent, `kubectl get pods -A` is the list to use. The guest boot log is `sudo tail -n 80 /var/log/cloud-init-output.log` on the same SSH command.
 
 Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 

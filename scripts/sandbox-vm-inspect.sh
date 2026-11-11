@@ -28,4 +28,4 @@ if [ ! -f "${SANDBOX_VM_KEY}" ]; then
   echo "No SSH key at ${SANDBOX_VM_KEY}. Run 3. Start minikube VM first."
   exit 0
 fi
-sandbox_vm_ssh 'sudo minikube status; echo; sudo kubectl get pods -A; echo; echo === openshell-0 ===; sudo kubectl logs -n openshell openshell-0 --tail=40; echo; echo === model-check agent ===; sudo kubectl logs -n openshell default--model-check -c agent --tail=40; echo; echo === model-check supervisor ===; sudo kubectl logs -n openshell default--model-check -c supervisor --tail=40; echo; echo === gateway unit ===; sudo journalctl -u hello-openshell-gateway -n 20 --no-pager' || true
+sandbox_vm_ssh 'sudo minikube status; echo; sudo kubectl get pods -A; echo; echo === openshell-0 ===; sudo kubectl logs -n openshell openshell-0 --tail=40; echo; echo === model-check agent ===; sudo kubectl logs -n openshell default--model-check -c agent --tail=40; echo; echo === gateway unit ===; sudo journalctl -u hello-openshell-gateway -n 20 --no-pager' || true

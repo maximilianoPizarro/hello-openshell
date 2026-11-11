@@ -80,7 +80,7 @@ openshell sandbox create \
   --from registry.access.redhat.com/hi/python:3.12 \
   --policy deploy/hi-python.policy.yaml \
   -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
-      <p>OpenShell 0.1.8 necesita Landlock ABI v3 en el kernel del guest. El 11 Nov 2026 este comando imprimió <code>ok</code> y la fase quedó <code>Completed</code>. Si un agente posterior sale, el log es <code>openshell logs model-check</code>.</p>
+      <p>OpenShell 0.1.8 necesita Landlock ABI v3 en el kernel del guest. El 11 Nov 2026 este comando imprimió <code>ok</code> y la fase quedó <code>Completed</code>. El log del gateway muestra <code>policy status=loaded</code> y <code>FinalizeMainProcessExit</code>. Los contenedores del pod son <code>agent</code> y dos init. No hay un contenedor <code>supervisor</code>. Si un agente posterior sale, los logs son <code>openshell logs model-check</code> y <code>kubectl logs -n openshell default--model-check -c agent</code>. La tarea <strong>9. Inspect cluster</strong> los imprime.</p>
     </article>
     <article class="step">
       <h2><span>5</span>Ask Granite</h2>
