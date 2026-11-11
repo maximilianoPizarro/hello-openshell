@@ -27,5 +27,20 @@ for k in ca.crt tls.crt tls.key; do
 done
 chown fedora:fedora /home/fedora/openshell-client/*
 chmod 600 /home/fedora/openshell-client/tls.key
-nohup kubectl -n openshell port-forward --address 0.0.0.0 svc/openshell 8080:8080 >/var/log/hello-openshell-gateway.log 2>&1 &
+cat >/etc/systemd/system/hello-openshell-gateway.service <<'UNIT'
+[Unit]
+Description=OpenShell gateway port-forward
+After=network-online.target
+[Service]
+Environment=HOME=/root
+Environment=KUBECONFIG=/root/.kube/config
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/kubectl -n openshell port-forward --address 0.0.0.0 svc/openshell 8080:8080
+Restart=always
+RestartSec=2
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now hello-openshell-gateway.service
 date -Is > /var/lib/hello-openshell/ready

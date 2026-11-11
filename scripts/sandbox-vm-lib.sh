@@ -23,3 +23,33 @@ sandbox_vm_ssh() {
     "fedora@${SANDBOX_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local" \
     "$@"
 }
+
+# kubectl port-forward exits when its API connection drops. A unit brings it back.
+sandbox_vm_ensure_gateway() {
+  sandbox_vm_ssh sudo -n bash -s <<'EOF'
+set -eu
+export HOME=/root KUBECONFIG=/root/.kube/config PATH=/usr/local/bin:/usr/bin:/bin
+if python3 -c 'import socket; socket.create_connection(("127.0.0.1", 8080), 2)' 2>/dev/null; then
+  exit 0
+fi
+cat >/etc/systemd/system/hello-openshell-gateway.service <<'UNIT'
+[Unit]
+Description=OpenShell gateway port-forward
+After=network-online.target
+[Service]
+Environment=HOME=/root
+Environment=KUBECONFIG=/root/.kube/config
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/kubectl -n openshell port-forward --address 0.0.0.0 svc/openshell 8080:8080
+Restart=always
+RestartSec=2
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable hello-openshell-gateway.service
+systemctl restart hello-openshell-gateway.service
+sleep 2
+python3 -c 'import socket; socket.create_connection(("127.0.0.1", 8080), 2)'
+EOF
+}

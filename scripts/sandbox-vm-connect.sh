@@ -33,22 +33,29 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
   fi
 
   if err="$(sandbox_vm_ssh true 2>&1)"; then
+    if ! sandbox_vm_ssh "python3 -c 'import socket; socket.create_connection((\"127.0.0.1\", 8080), 2)'" 2>/dev/null; then
+      echo "127.0.0.1:8080 is closed in the guest. Restarting the gateway port-forward."
+      if ! sandbox_vm_ensure_gateway; then
+        echo "Port-forward did not start."
+        sandbox_vm_ssh "sudo kubectl -n openshell get pods; echo ---; sudo journalctl -u hello-openshell-gateway -n 30 --no-pager; echo ---; sudo tail -n 30 /var/log/cloud-init-output.log" || true
+      fi
+    fi
     if sandbox_vm_ssh "test -f /var/lib/hello-openshell/ready && python3 -c 'import socket; socket.create_connection((\"127.0.0.1\", 8080), 2)'"; then
       echo "Guest gateway is up."
       break
     fi
     if sandbox_vm_ssh "test -f /var/lib/hello-openshell/failed"; then
       if [ "${retried}" -eq 0 ]; then
-        echo "Guest boot failed once. Starting the service again."
-        sandbox_vm_ssh "sudo rm -f /var/lib/hello-openshell/failed && sudo systemctl start --no-block hello-openshell-minikube.service" || true
+        echo "Guest boot failed once. Starting the gateway port-forward again."
+        sandbox_vm_ensure_gateway || true
         retried=1
       else
         echo "Guest boot failed:"
-        sandbox_vm_ssh "cat /var/lib/hello-openshell/failed; echo; tail -n 80 /var/log/hello-openshell-minikube.log" || true
+        sandbox_vm_ssh "cat /var/lib/hello-openshell/failed; echo; sudo tail -n 80 /var/log/cloud-init-output.log" || true
         exit 1
       fi
     else
-      sandbox_vm_ssh "tail -n 15 /var/log/hello-openshell-minikube.log" || true
+      sandbox_vm_ssh "sudo tail -n 15 /var/log/cloud-init-output.log" || true
     fi
   else
     if printf '%s\n' "${err}" | grep -q "Permission denied"; then
