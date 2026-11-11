@@ -2,7 +2,7 @@ schemaVersion: 2.2.2
 metadata:
   name: hello-openshell
   displayName: OpenShell on Developer Sandbox
-  description: Call the shared Granite model from OpenShift Dev Spaces. Does not install OpenShell or a GPU model.
+  description: Dev Spaces workspace with the OpenShell 0.1.8 CLI. The Developer Sandbox cannot host the gateway.
   language: Python
   projectType: openshell
   tags:
@@ -22,6 +22,24 @@ components:
       mountSources: true
       sourceMapping: /projects
 commands:
+  - id: install-openshell-cli
+    exec:
+      component: tools
+      commandLine: bash scripts/install-openshell-cli.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Install OpenShell CLI
+      group:
+        kind: run
+        isDefault: false
+  - id: openshell-version
+    exec:
+      component: tools
+      commandLine: bash -lc 'bash scripts/install-openshell-cli.sh && openshell version && openshell status || true'
+      workingDir: ${PROJECT_SOURCE}
+      label: OpenShell version
+      group:
+        kind: run
+        isDefault: false
   - id: project-status
     exec:
       component: tools
@@ -58,3 +76,6 @@ commands:
       group:
         kind: run
         isDefault: false
+events:
+  postStart:
+    - install-openshell-cli

@@ -197,12 +197,21 @@ podman stats --no-stream ollama
 
 ## Developer Sandbox
 
-Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) is read from the root. No task runs until you choose it (**Terminal → Run Task…**).
+Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary). Other tasks wait until you choose them (**Terminal → Run Task…**).
 
-The workspace calls the shared Granite predictor. Your project has no GPU quota, and a sandbox user cannot install the OpenShell gateway. The token is `oc whoami -t` at task time and is not stored in git.
+Checked on 11 November 2026 against `https://api.rm2.thpm.p1.openshiftapps.com:6443` as `maximilianopizarro5`, project `maximilianopizarro5-dev`, OpenShift 4.22.22:
+
+- The user cannot create CRDs, namespaces, or ClusterRoles.
+- `agents.x-k8s.io` is not served, so the Helm chart 0.1.8 preflight refuses to install the gateway.
+- GPU quota for the project is 0.
+- `oc get inferenceservice -n sandbox-shared-models` returned no objects.
+
+The gateway was not installed. `openshell version` works after the CLI install. `openshell status` needs a gateway, which this project cannot host.
 
 | Task | What it runs |
 | --- | --- |
+| Install OpenShell CLI | `scripts/install-openshell-cli.sh` (also on workspace start) |
+| OpenShell version | the same install, then `openshell version` |
 | Project status | `scripts/sandbox-status.sh` |
 | Ask Granite | `scripts/sandbox-ask.sh curl` |
 | Ask with ask.py | `scripts/sandbox-ask.sh python` |

@@ -59,7 +59,7 @@ The last command must list an NVIDIA hardware profile. [deploy/granite-2b-values
 
 If `GPU` is empty, the GPU Operator has not published `nvidia.com/gpu` yet. Stop there. vLLM will not start the model.
 
-A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. The sandbox user is not `cluster-admin`, and the project GPU quota is 0. Use the [Dev Spaces tasks](sandbox/index.html) there. They call the shared model the sandbox already serves.
+A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. On 11 November 2026 the project `maximilianopizarro5-dev` on OpenShift 4.22.22 could not create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` was not served, and the project GPU quota was 0. The Helm chart stops in that case. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI only.
 
 ## 1. Serve the small model
 

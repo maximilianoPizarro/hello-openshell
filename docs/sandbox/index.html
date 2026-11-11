@@ -32,7 +32,7 @@
     <section class="hero">
       <p class="kicker">OpenShift Dev Spaces</p>
       <h1>Developer Sandbox</h1>
-      <p class="lede">Open the repo in a workspace and call the Granite model the sandbox already serves. This track does not install the OpenShell gateway and does not request a GPU. The pattern follows <a href="https://github.com/maximilianoPizarro/camel-k-devsandbox">camel-k-devsandbox</a>.</p>
+      <p class="lede">Open the repo in a workspace. Startup installs the OpenShell 0.1.8 CLI. This cluster cannot host the gateway.</p>
       <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Open in Developer Sandbox</a></p>
     </section>
     <figure>
@@ -41,7 +41,7 @@
     </figure>
     <article class="step">
       <h2><span>1</span>Open the workspace</h2>
-      <p>Use the button, or in <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> open <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> and create a workspace from this repository. <code>devfile.yaml</code> requests 512Mi / 200m and limits the tools container to 4Gi / 2 CPUs. Storage is ephemeral. No task runs on startup. Commands are documented in <a href="https://devfile.io/docs/2.2.2/defining-commands">Defining commands</a>.</p>
+      <p>Use the button, or in <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> open <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> and create a workspace from this repository. <code>devfile.yaml</code> requests 512Mi / 200m and limits the tools container to 4Gi / 2 CPUs. Storage is ephemeral. On start it runs <code>scripts/install-openshell-cli.sh</code> and puts <code>openshell</code> 0.1.8 on the PATH. The other tasks stay manual. Commands are documented in <a href="https://devfile.io/docs/2.2.2/defining-commands">Defining commands</a>.</p>
     </article>
     <article class="step">
       <h2><span>2</span>Project status</h2>
@@ -62,7 +62,7 @@
       <p>Task <strong>Clean</strong> deletes objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. It does not delete the shared model or the workspace.</p>
     </article>
     <section class="note warn">
-      <p><strong>Cluster admin path.</strong> Agent Sandbox, the OpenShell Helm chart, and your own Granite 3.3 2B Service need a cluster you administer. That module is <a href="../openshift/index.html">OpenShift AI</a>.</p>
+      <p><strong>Gateway.</strong> On 11 November 2026 this sandbox (OpenShift 4.22.22, project <code>maximilianopizarro5-dev</code>) could not create CRDs, namespaces, or ClusterRoles, and <code>agents.x-k8s.io</code> was not served. Helm chart 0.1.8 stops there, so the gateway was not installed. <code>openshell version</code> works. <code>openshell status</code> needs a gateway. A cluster you administer is the <a href="../openshift/index.html">OpenShift AI</a> module. GPU quota on this project is 0, and <code>oc get inferenceservice -n sandbox-shared-models</code> returned no objects.</p>
     </section>
   </main>
   <footer>
