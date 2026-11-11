@@ -65,14 +65,22 @@ kubectl -n openshell rollout status statefulset/openshell --timeout=300s</code><
     </article>
     <article class="step">
       <h2><span>3</span>CLI and mTLS</h2>
-      <p>Cloud Shell is Debian. Use the musl binary, not the Fedora installer. Leave the port-forward running in another terminal. Copy <code>openshell-client-tls</code> the same way as the <a href="../openshift/index.html">OpenShift module</a>, with <code>kubectl</code> instead of <code>oc</code>.</p>
+      <p>Cloud Shell is Debian. Use the musl binary, not the Fedora installer. Leave the port-forward running in another terminal. The directory name must match the gateway name.</p>
       <pre><code>mkdir -p "${HOME}/.local/bin"
 curl -fL https://github.com/NVIDIA/OpenShell/releases/download/v0.1.8/openshell-x86_64-unknown-linux-musl.tar.gz \
   | tar -xz -C "${HOME}/.local/bin"
 export PATH="${HOME}/.local/bin:${PATH}"
 openshell --version
 kubectl -n openshell port-forward svc/openshell 8080:8080</code></pre>
-      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name minikube
+      <pre><code>mkdir -p "${HOME}/.config/openshell/gateways/minikube/mtls"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.ca\.crt}' | base64 -d \
+  &gt; "${HOME}/.config/openshell/gateways/minikube/mtls/ca.crt"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.crt}' | base64 -d \
+  &gt; "${HOME}/.config/openshell/gateways/minikube/mtls/tls.crt"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.key}' | base64 -d \
+  &gt; "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+chmod 600 "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+openshell gateway add https://127.0.0.1:8080 --local --name minikube
 openshell gateway select minikube
 openshell status</code></pre>
     </article>

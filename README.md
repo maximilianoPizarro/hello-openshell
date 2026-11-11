@@ -243,7 +243,7 @@ helm upgrade --install openshell \
 kubectl -n openshell rollout status statefulset/openshell --timeout=300s
 ```
 
-Cloud Shell is Debian. Install the musl CLI, not the Fedora installer. In a second terminal, port-forward the gateway and register it with the client bundle from `openshell-client-tls`. The same steps as [docs/openshift-ai.md](docs/openshift-ai.md), with `kubectl` instead of `oc`.
+Cloud Shell is Debian. Install the musl CLI, not the Fedora installer. Leave the port-forward running in another terminal. The directory name must match the gateway name. These files are transport credentials.
 
 ```bash
 mkdir -p "${HOME}/.local/bin"
@@ -253,6 +253,20 @@ export PATH="${HOME}/.local/bin:${PATH}"
 openshell --version
 
 kubectl -n openshell port-forward svc/openshell 8080:8080
+```
+
+```bash
+mkdir -p "${HOME}/.config/openshell/gateways/minikube/mtls"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.ca\.crt}' | base64 -d \
+  > "${HOME}/.config/openshell/gateways/minikube/mtls/ca.crt"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.crt}' | base64 -d \
+  > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.crt"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.key}' | base64 -d \
+  > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+chmod 600 "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+openshell gateway add https://127.0.0.1:8080 --local --name minikube
+openshell gateway select minikube
+openshell status
 ```
 
 A sandbox that only prints from the hardened image confirms the gateway. The node kernel still has to allow Landlock. If the sandbox log names Landlock or seccomp, that node cannot run OpenShell 0.1.8.

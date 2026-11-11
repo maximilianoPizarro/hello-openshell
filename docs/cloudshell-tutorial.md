@@ -36,13 +36,28 @@ curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
 
 ## Connect the CLI
 
-Cloud Shell is Debian. Use the musl binary. Run the port-forward in another terminal, then register the gateway with the `openshell-client-tls` Secret.
+Cloud Shell is Debian. Use the musl binary. Leave the port-forward running in another terminal. The directory name must match the gateway name.
 
 ```bash
 mkdir -p "${HOME}/.local/bin"
 curl -fL https://github.com/NVIDIA/OpenShell/releases/download/v0.1.8/openshell-x86_64-unknown-linux-musl.tar.gz | tar -xz -C "${HOME}/.local/bin"
 export PATH="${HOME}/.local/bin:${PATH}"
 openshell --version
+```
+
+```bash
+kubectl -n openshell port-forward svc/openshell 8080:8080
+```
+
+```bash
+mkdir -p "${HOME}/.config/openshell/gateways/minikube/mtls"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.ca\.crt}' | base64 -d > "${HOME}/.config/openshell/gateways/minikube/mtls/ca.crt"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.crt}' | base64 -d > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.crt"
+kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.key}' | base64 -d > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+chmod 600 "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+openshell gateway add https://127.0.0.1:8080 --local --name minikube
+openshell gateway select minikube
+openshell status
 ```
 
 ## Smoke test
