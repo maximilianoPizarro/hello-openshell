@@ -1,4 +1,5 @@
 [![Open in Developer Sandbox](https://img.shields.io/static/v1?label=Open%20in&message=Developer%20Sandbox&logo=eclipseche&color=FDB940&labelColor=525C86)](https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral)
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md)
 
 <p>
   <a href="https://docs.nvidia.com/openshell/">NVIDIA OpenShell</a>
@@ -10,13 +11,14 @@
 
 # OpenShell with a small model
 
-[examples/ask.py](examples/ask.py) is the same client on three tracks:
+[examples/ask.py](examples/ask.py) is the same client on four tracks:
 
 | Track | Where it runs | What serves the model |
 | --- | --- | --- |
 | Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
 | Developer Sandbox | OpenShift Dev Spaces | An OpenAI-compatible predictor you can reach from the workspace |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
+| Cloud Shell | A GKE Standard cluster you create | Whatever OpenAI-compatible endpoint the sandbox can reach |
 
 The step-by-step site is in [docs/](docs/index.html) (English and Spanish). The cluster write-up is [docs/openshift-ai.md](docs/openshift-ai.md). What this guide was written against is in [docs/tested-environments.md](docs/tested-environments.md).
 
@@ -219,6 +221,64 @@ This track does not install the gateway. A Developer Sandbox project cannot crea
 There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running the Ask tasks.
 
 Details: [docs/sandbox/index.html](docs/sandbox/index.html).
+
+## Vanilla Kubernetes from Cloud Shell
+
+[Open in Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md) clones this repository and opens [docs/cloudshell-tutorial.md](docs/cloudshell-tutorial.md). The same steps are on the site at [docs/gke/index.html](docs/gke/index.html) ([español](docs/es/gke/index.html)). Cloud Shell is only the client. The cluster is a [GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-zonal-cluster) Standard cluster in your Google Cloud project, and it keeps billing after you close the shell.
+
+Use a Standard cluster, not Autopilot. You are its administrator, so you can install the Agent Sandbox CRD. Do not use [deploy/openshift-scc-values.yaml](deploy/openshift-scc-values.yaml) here. That file is for OpenShift `restricted-v2`.
+
+```bash
+export ZONE="${ZONE:-us-central1-a}"
+export CLUSTER="${CLUSTER:-openshell}"
+
+gcloud container clusters create "${CLUSTER}" \
+  --zone "${ZONE}" \
+  --machine-type e2-standard-2 \
+  --num-nodes 2 \
+  --image-type UBUNTU_CONTAINERD
+
+gcloud container clusters get-credentials "${CLUSTER}" --zone "${ZONE}"
+
+kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
+kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
+
+helm upgrade --install openshell \
+  oci://ghcr.io/nvidia/openshell/helm-chart \
+  --version 0.1.8 \
+  --namespace openshell \
+  --create-namespace
+
+kubectl -n openshell rollout status statefulset/openshell --timeout=300s
+```
+
+Cloud Shell is Debian. Install the musl CLI, not the Fedora installer. In a second terminal, port-forward the gateway and register it with the client bundle from `openshell-client-tls`. The same steps as [docs/openshift-ai.md](docs/openshift-ai.md), with `kubectl` instead of `oc`.
+
+```bash
+mkdir -p "${HOME}/.local/bin"
+curl -fL "https://github.com/NVIDIA/OpenShell/releases/download/v0.1.8/openshell-x86_64-unknown-linux-musl.tar.gz" \
+  | tar -xz -C "${HOME}/.local/bin"
+export PATH="${HOME}/.local/bin:${PATH}"
+openshell --version
+
+kubectl -n openshell port-forward svc/openshell 8080:8080
+```
+
+A sandbox that only prints from the hardened image confirms the gateway. The node kernel still has to allow Landlock. If the sandbox log names Landlock or seccomp, that node cannot run OpenShell 0.1.8.
+
+```bash
+openshell sandbox create \
+  --name model-check \
+  --from registry.access.redhat.com/hi/python:3.12 \
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'print("ok")'
+```
+
+Delete the cluster when you are done. Closing Cloud Shell does not delete it.
+
+```bash
+gcloud container clusters delete "${CLUSTER}" --zone "${ZONE}"
+```
 
 ## OpenShift AI (admin reference)
 

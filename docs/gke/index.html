@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenShell on GKE from Cloud Shell</title>
+  <link rel="stylesheet" href="../css/site.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="../index.html">
+        <span class="logos">
+          <span class="word">NVIDIA</span>
+          <img src="../assets/logos/podman-logo.png" alt="Podman">
+          <img src="../assets/logos/python-logo.svg" alt="Python">
+        </span>
+        <strong>hello-openshell</strong>
+      </a>
+      <nav class="tracks" aria-label="Tracks">
+        <a href="../index.html">Local</a>
+        <a href="../sandbox/index.html">Developer Sandbox</a>
+        <a href="../openshift/index.html">OpenShift</a>
+        <a href="index.html" aria-current="page">Cloud Shell</a>
+      </nav>
+      <nav class="lang" aria-label="Language">
+        <a href="index.html" aria-current="page">EN</a>
+        <a href="../es/gke/index.html">ES</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="kicker">GKE Standard · you administer the cluster</p>
+      <h1>OpenShell from Cloud Shell</h1>
+      <p class="lede">Cloud Shell is the client. The cluster is a GKE Standard cluster in your Google Cloud project. It keeps billing after you close the shell. This is not Developer Sandbox.</p>
+      <p><a href="https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&amp;cloudshell_git_branch=main&amp;cloudshell_tutorial=docs/cloudshell-tutorial.md"><img alt="Open in Cloud Shell" src="https://gstatic.com/cloudssh/images/open-btn.svg" height="36"></a></p>
+    </section>
+    <table>
+      <thead><tr><th>Piece</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>Cluster</td><td>GKE Standard, Ubuntu nodes. Not Autopilot.</td></tr>
+        <tr><td>Agent Sandbox</td><td>v1.0.10 <code>sandbox.yaml</code></td></tr>
+        <tr><td>OpenShell chart</td><td>0.1.8</td></tr>
+        <tr><td>CLI</td><td>musl tarball 0.1.8</td></tr>
+        <tr><td>Sandbox image</td><td><code>registry.access.redhat.com/hi/python:3.12</code></td></tr>
+      </tbody>
+    </table>
+    <article class="step">
+      <h2><span>1</span>Create the cluster</h2>
+      <p>Autopilot often rejects the sandbox runtime. Ubuntu is the node image used for the Landlock check. Do not pass <code>deploy/openshift-scc-values.yaml</code>. That file is for OpenShift <code>restricted-v2</code>.</p>
+      <pre><code>export ZONE="${ZONE:-us-central1-a}"
+export CLUSTER="${CLUSTER:-openshell}"
+gcloud container clusters create "${CLUSTER}" \
+  --zone "${ZONE}" \
+  --machine-type e2-standard-2 \
+  --num-nodes 2 \
+  --image-type UBUNTU_CONTAINERD
+gcloud container clusters get-credentials "${CLUSTER}" --zone "${ZONE}"</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>2</span>Agent Sandbox and the gateway</h2>
+      <p>The chart does not install the CRD. You can apply it because you administer this cluster. If <code>helm</code> is missing, install Helm 3 first.</p>
+      <pre><code>kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
+kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
+helm upgrade --install openshell \
+  oci://ghcr.io/nvidia/openshell/helm-chart \
+  --version 0.1.8 \
+  --namespace openshell \
+  --create-namespace
+kubectl -n openshell rollout status statefulset/openshell --timeout=300s</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>3</span>CLI and mTLS</h2>
+      <p>Cloud Shell is Debian. Use the musl binary, not the Fedora installer. Leave the port-forward running in another terminal. Copy <code>openshell-client-tls</code> the same way as the <a href="../openshift/index.html">OpenShift module</a>, with <code>kubectl</code> instead of <code>oc</code>.</p>
+      <pre><code>mkdir -p "${HOME}/.local/bin"
+curl -fL https://github.com/NVIDIA/OpenShell/releases/download/v0.1.8/openshell-x86_64-unknown-linux-musl.tar.gz \
+  | tar -xz -C "${HOME}/.local/bin"
+export PATH="${HOME}/.local/bin:${PATH}"
+openshell --version
+kubectl -n openshell port-forward svc/openshell 8080:8080</code></pre>
+      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name gke
+openshell gateway select gke
+openshell status</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>4</span>Smoke test</h2>
+      <p>A sandbox that only prints confirms the gateway. The node kernel still has to allow Landlock. If the sandbox log names Landlock or seccomp, that node cannot run OpenShell 0.1.8. The policy sets user and group <code>65532</code> for the hardened image.</p>
+      <pre><code>openshell sandbox create \
+  --name model-check \
+  --from registry.access.redhat.com/hi/python:3.12 \
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>5</span>Delete the cluster</h2>
+      <p>Closing Cloud Shell does not delete the cluster.</p>
+      <pre><code>gcloud container clusters delete "${CLUSTER}" --zone "${ZONE}"</code></pre>
+      <p>The click-through file the button opens is <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/docs/cloudshell-tutorial.md">docs/cloudshell-tutorial.md</a>.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="wrap">
+      <p>Independent guide. NVIDIA marks are named on the <a href="../index.html">local page</a>. Google Cloud and GKE are trademarks of Google LLC. This page does not ship those logo files.</p>
+    </div>
+  </footer>
+</body>
+</html>

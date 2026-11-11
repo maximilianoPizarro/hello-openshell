@@ -69,7 +69,7 @@ nav.tracks a[aria-current="page"], .lang a[aria-current="page"] {
 .hero h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.1; margin: 0 0 12px; }
 .lede { color: var(--muted); font-size: 18px; max-width: 68ch; }
 
-.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 22px 0 8px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 22px 0 8px; }
 .card, .step, .note {
   background: var(--bg-raise);
   border: 1px solid var(--line);
@@ -115,6 +115,5 @@ footer {
 }
 
 @media (max-width: 800px) {
-  .cards { grid-template-columns: 1fr; }
   .bar { flex-direction: column; align-items: flex-start; padding: 10px 0; }
 }
