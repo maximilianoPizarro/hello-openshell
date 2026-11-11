@@ -16,7 +16,7 @@
 | Track | Where it runs | What serves the model |
 | --- | --- | --- |
 | Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
-| Developer Sandbox | OpenShift Dev Spaces | An OpenAI-compatible predictor you can reach from the workspace |
+| Developer Sandbox | Dev Spaces, gateway on an OpenShift Virtualization VM | An OpenAI-compatible predictor the workspace can reach |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
 | Cloud Shell | minikube inside Cloud Shell | Gateway only. This kernel cannot run a sandbox. |
 
@@ -207,18 +207,45 @@ podman stats --no-stream ollama
 
 Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary, into `~/.local/bin`). A failed install does not stop the workspace. Other tasks wait until you choose them (**Terminal → Run Task…**).
 
-This track does not install the gateway. A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and `agents.x-k8s.io` is not served, so Helm chart 0.1.8 stops. Skipping that preflight lets the Pod start only when `runAsUser` is unset; the process then exits because it lists `sandboxes.agents.x-k8s.io`. A namespace Role cannot grant that API, and kind, k3d, or a rebuilt gateway image cannot register it. GPU quota for the user project is typically 0. After the CLI install, check with `openshell --version`. `openshell status` needs a gateway.
+The sandbox project cannot install the gateway. It cannot create CRDs, namespaces, or ClusterRoles, and `agents.x-k8s.io` is not served, so Helm chart 0.1.8 stops if you point it at that API. GPU quota for the user project is typically 0. The workspace still installs the CLI. OpenShift Virtualization in the same project runs `minikube-vm`, a Fedora guest. minikube on that guest uses the Podman driver and containerd, and cloud-init installs Agent Sandbox v1.0.10 plus the chart there. Run the commands in the workspace shell. That shell resolves `minikube-vm.<project>.svc.cluster.local`. A laptop does not.
 
-| Task | What it runs |
+| Order | Task | Command |
+| --- | --- | --- |
+| 1 | Install OpenShell CLI | `bash scripts/install-openshell-cli.sh` (also on workspace start) |
+| 2 | Project status | `bash scripts/sandbox-status.sh` |
+| 3 | Start minikube VM | `bash scripts/sandbox-vm-up.sh` (also runs the connect script) |
+| 4 | Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
+| 5 | Create minikube sandbox | `bash scripts/sandbox-vm-sandbox.sh` |
+| 6 | Ask Granite | `bash scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
+| 7 | Ask with ask.py | `bash scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
+| 8 | Clean | `bash scripts/sandbox-down.sh` |
+
+**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand.
+
+Command 3 applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource and gzip-encodes [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) into cloud-init. Inline user data is capped at 2048 bytes, and the admission webhook requires `user: fedora` in that text. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run command 3 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **Clean** first. The first successful boot is the one that installs the gateway.
+
+| Piece | Value |
 | --- | --- |
-| Install OpenShell CLI | `scripts/install-openshell-cli.sh` (also on workspace start) |
-| OpenShell version | the same install, then `openshell --version` |
-| Project status | `scripts/sandbox-status.sh` |
-| Ask Granite | `scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
-| Ask with ask.py | `scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
-| Clean | deletes objects labeled `app.kubernetes.io/part-of=hello-openshell` |
+| Guest | Fedora DataSource `fedora`, preference `fedora` |
+| Instance | `u1.large`, 2 vCPU / 8Gi, disk 30Gi, `runStrategy: Manual` |
+| minikube | 1.39.0, Podman driver, containerd, `--force` |
+| kubectl / Helm | 1.37.0 / 3.22.1 |
+| Gateway | Agent Sandbox v1.0.10, OpenShell chart 0.1.8 |
 
-There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running the Ask tasks.
+Command 4 copies the client certificates, opens an SSH tunnel to `127.0.0.1:8080`, and runs `openshell gateway add https://127.0.0.1:8080 --local --name minikube`. It waits up to 40 minutes for `/var/lib/hello-openshell/ready`. If that file never appears, the guest log is `/var/log/cloud-init-output.log`. Command 5 selects that gateway and creates the sandbox inside the VM:
+
+```bash
+openshell gateway select minikube
+openshell sandbox create \
+  --name model-check \
+  --from registry.access.redhat.com/hi/python:3.12 \
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'print("ok")'
+```
+
+OpenShell 0.1.8 needs Landlock ABI v3 on the guest. If the agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
+
+Commands 6 and 7 do not use the VM. There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running them. Command 8 deletes `minikube-vm` and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
 
 Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 
@@ -318,7 +345,9 @@ The admin path (OpenShift 4.19+, Agent Sandbox v1.0.10, Helm chart 0.1.8, vLLM c
 | Model | `/v1/models` has no `llama3.2:1b` | `podman exec ollama ollama pull llama3.2:1b` is still running. `podman logs ollama`. |
 | Network (Windows NAT) | `curl` to `127.0.0.1:11434` from Windows returns connection refused | Use `make ollama-url`, or switch WSL to `networkingMode=mirrored`. |
 | Gateway | The gateway creates no containers | `socket_path` must be the daemon that lists `ollama`. |
-| Image | Sandbox exits naming Landlock or seccomp | The kernel refused the filter. OpenShell 0.1.8 needs that check. |
+| Image | Sandbox exits naming Landlock or seccomp | The kernel refused the filter. OpenShell 0.1.8 needs that check. On the VM path the kernel is the Fedora guest, not the Dev Spaces node. |
+| VM | Guest log says `DRV_AS_ROOT` | minikube 1.39 refuses the Podman driver as root unless `--force` is set. Clean the VM so cloud-init runs the current guest script. |
+| VM | SSH to the guest says `Permission denied` | Cloud-init kept the key from the first boot. Run Clean, then Start minikube VM. |
 | Policy | `no matching policy` names a binary | On the hardened image the interpreter is `/usr/bin/python3.12`. Update the profile and keep `resource_version`. |
 | Policy | `configure an explicit workload group` | The image user `65532` has primary group `0`. Pass `--policy deploy/hi-python.policy.yaml`. |
 | Policy | `resolves to always-blocked address` | The sandbox URL used loopback. Use `host.openshell.internal`. |

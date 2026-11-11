@@ -11,3 +11,8 @@ oc get quota,limitrange
 echo
 echo "=== pods ==="
 oc get pods
+if oc api-resources --api-group=kubevirt.io -o name 2>/dev/null | grep -q '^virtualmachines$'; then
+  echo
+  echo "=== virtual machines ==="
+  oc get vm,vmi,dv,svc -l app.kubernetes.io/part-of=hello-openshell
+fi

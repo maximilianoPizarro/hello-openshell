@@ -31,9 +31,9 @@
   </header>
   <main class="wrap">
     <section class="hero">
-      <p class="kicker">Experimental · OpenShift Dev Spaces</p>
+      <p class="kicker">Experimental · OpenShift Virtualization</p>
       <h1>Developer Sandbox</h1>
-      <p class="lede">Abrí el repo en un workspace. Al arrancar se instala el CLI de OpenShell 0.1.8 y el workspace sigue abriendo si ese paso falla. Ejecutá <strong>Install OpenShell CLI</strong> para ver el error. Este clúster no puede alojar el gateway.</p>
+      <p class="lede">Abrí el repo en un workspace. Al arrancar se instala el CLI de OpenShell 0.1.8. El proyecto del sandbox no puede alojar el gateway, así que OpenShift Virtualization corre una VM Fedora en ese proyecto y esa VM corre minikube. Desde la terminal del workspace, el CLI crea el sandbox en ese gateway.</p>
       <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Abrir en Developer Sandbox</a></p>
     </section>
     <figure>
@@ -42,28 +42,61 @@
     </figure>
     <article class="step">
       <h2><span>1</span>Abrir el workspace</h2>
-      <p>Usá el botón, o en el <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> abrí <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> y creá un workspace con este repo. <code>devfile.yaml</code> pide 512Mi / 200m y limita el contenedor a 4Gi / 2 CPUs. El storage es efímero. Al arrancar corre <code>scripts/install-openshell-cli.sh</code> y deja <code>openshell</code> 0.1.8 en el PATH. El resto de las tareas se eligen a mano. Los comandos están en <a href="https://devfile.io/docs/2.2.2/defining-commands">Defining commands</a>.</p>
+      <p>Usá el botón, o en el <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> abrí <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> y creá un workspace con este repo. <code>devfile.yaml</code> pide 512Mi / 200m y limita el contenedor a 4Gi / 2 CPUs. El storage es efímero. Al arrancar corre el comando 1 de abajo. El resto de las tareas se eligen a mano (<strong>Terminal → Run Task…</strong>). Corrélas en la shell del workspace: esa shell resuelve <code>minikube-vm.&lt;proyecto&gt;.svc.cluster.local</code>. Una laptop no.</p>
     </article>
     <article class="step">
-      <h2><span>2</span>Project status</h2>
-      <p>Terminal → Run Task… → <strong>Project status</strong>. Corre <code>scripts/sandbox-status.sh</code> y muestra <code>oc whoami</code>, el proyecto y la cuota. Las <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuotas</a> también cuentan el pod del workspace. Confirmá el CLI con <code>openshell --version</code> (no existe el subcomando <code>openshell version</code>). El nombre de la tarea queda en inglés porque es el texto del IDE.</p>
+      <h2><span>2</span>Comandos del devfile</h2>
+      <p>Estos son los comandos <code>exec</code>, en el orden de ejecución. <strong>Start minikube VM</strong> ya corre <strong>Connect minikube gateway</strong> al final. Connect solo hace falta otra vez si la VM ya estaba arriba. <strong>OpenShell version</strong> es opcional: <code>openshell --version</code> (no existe <code>openshell version</code>). Los nombres de las tareas quedan en inglés porque son el texto del IDE.</p>
+      <pre><code>1. bash scripts/install-openshell-cli.sh
+2. bash scripts/sandbox-status.sh
+3. bash scripts/sandbox-vm-up.sh
+4. bash scripts/sandbox-vm-connect.sh
+5. bash scripts/sandbox-vm-sandbox.sh
+6. bash scripts/sandbox-ask.sh curl
+7. bash scripts/sandbox-ask.sh python
+8. bash scripts/sandbox-down.sh</code></pre>
     </article>
     <article class="step">
-      <h2><span>3</span>Ask Granite</h2>
-      <p>La tarea <strong>Ask Granite</strong> corre <code>scripts/sandbox-ask.sh curl</code>. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. No hay un hostname fijo de modelo compartido. Definí la URL base primero:</p>
+      <h2><span>3</span>Arrancar la VM</h2>
+      <p><code>scripts/sandbox-vm-up.sh</code> muestra <code>oc whoami</code> y la <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuota</a>, y aplica <code>deploy/sandbox-minikube-vm.yaml</code>. OpenShift Virtualization clona el DataSource <code>fedora</code> de <code>openshift-virtualization-os-images</code>. No hay imagen propia: Developer Sandbox apaga esas. <code>runStrategy</code> es <code>Manual</code>, y el script arranca el guest con el subrecurso start. El cloud-init inline tiene un tope de 2048 bytes y tiene que nombrar al usuario <code>fedora</code>, así que el script comprime <code>scripts/minikube-guest-boot.sh</code> dentro de ese texto.</p>
+      <table>
+        <thead><tr><th>Pieza</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td>Instancia</td><td><code>u1.large</code>, 2 vCPU / 8Gi, disco de 30Gi</td></tr>
+          <tr><td>minikube</td><td>1.39.0, driver Podman, containerd, <code>--memory=3072 --cpus=2 --disk-size=10g --force</code></td></tr>
+          <tr><td>kubectl / Helm</td><td>1.37.0 / 3.22.1</td></tr>
+          <tr><td>Gateway</td><td>Agent Sandbox v1.0.10, chart de OpenShell 0.1.8</td></tr>
+        </tbody>
+      </table>
+      <p>El script del guest corre como root. minikube 1.39 sale con <code>DRV_AS_ROOT</code> si falta <code>--force</code>. También se detiene si <code>landlock</code> no está en <code>/sys/kernel/security/lsm</code>. Los contenedores usan ese kernel. Developer Sandbox apaga las VMs Linux a la hora. Volvé a correr la misma tarea después. Si la VM ya existe, el script deja el disco y el cloud-init como están, así que un script de arranque nuevo pide <strong>Clean</strong> antes. El primer arranque que termina instala el gateway. Connect espera hasta 40 minutos a <code>/var/lib/hello-openshell/ready</code>. Si ese archivo no aparece, el log del guest es <code>/var/log/cloud-init-output.log</code>.</p>
+    </article>
+    <article class="step">
+      <h2><span>4</span>Crear el sandbox</h2>
+      <p>La tarea <strong>Create minikube sandbox</strong> corre <code>scripts/sandbox-vm-sandbox.sh</code>. Conecta el CLI a <code>https://127.0.0.1:8080</code> por un túnel SSH (el certificado del servidor incluye localhost), selecciona el gateway <code>minikube</code> y crea el sandbox en el clúster de la VM:</p>
+      <pre><code>openshell gateway select minikube
+openshell sandbox create \
+  --name model-check \
+  --from registry.access.redhat.com/hi/python:3.12 \
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
+      <p>OpenShell 0.1.8 necesita Landlock ABI v3 en el kernel del guest. Si el contenedor del agente sale, el log es <code>openshell logs model-check</code>.</p>
+    </article>
+    <article class="step">
+      <h2><span>5</span>Ask Granite</h2>
+      <p>La tarea <strong>Ask Granite</strong> no usa la VM. Corre <code>scripts/sandbox-ask.sh curl</code> contra un predictor que el workspace pueda resolver. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. Definí la URL base primero:</p>
       <pre><code>export SANDBOX_MODEL_BASE=https://&lt;predictor&gt;.&lt;namespace&gt;.svc.cluster.local:8443/v1</code></pre>
       <p>El script lista <code>/v1/models</code> y manda un chat completion. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
     </article>
     <article class="step">
-      <h2><span>4</span>Ask with ask.py</h2>
+      <h2><span>6</span>Ask with ask.py</h2>
       <p>La tarea <strong>Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. También necesita <code>SANDBOX_MODEL_BASE</code>. El prompt del script es una frase en español.</p>
     </article>
     <article class="step">
-      <h2><span>5</span>Clean</h2>
-      <p>La tarea <strong>Clean</strong> borra objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
+      <h2><span>7</span>Clean</h2>
+      <p>La tarea <strong>Clean</strong> corta el túnel SSH y borra <code>minikube-vm</code> más los objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
     </article>
     <section class="note warn">
-      <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida. El chart 0.1.8 se detiene ahí. Si se salta el preflight, el proceso igual sale al listar <code>sandboxes.agents.x-k8s.io</code>. <code>openshell --version</code> funciona después de instalar el CLI. <code>openshell status</code> necesita un gateway. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>
+      <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida, así que el chart 0.1.8 no se puede instalar en el proyecto. El chart corre dentro del minikube de la VM de OpenShift Virtualization, donde esos límites no aplican. No pases valores de SCC de OpenShift a ese minikube. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>
     </section>
   </main>
   <footer>

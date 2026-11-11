@@ -59,7 +59,7 @@ The last command must list an NVIDIA hardware profile. [deploy/granite-2b-values
 
 If `GPU` is empty, the GPU Operator has not published `nvidia.com/gpu` yet. Stop there. vLLM will not start the model.
 
-A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. That project cannot create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` is not served, and the GPU quota is 0. The Helm chart stops in that case. Skipping the preflight and the cluster Role still does not help: the gateway process exits while listing `sandboxes.agents.x-k8s.io`, and the user cannot grant that permission. kind, k3d, and a rebuilt gateway image do not register the API. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI only.
+A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. That project cannot create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` is not served, and the GPU quota is 0. The Helm chart stops in that case. Skipping the preflight and the cluster Role still does not help: the gateway process exits while listing `sandboxes.agents.x-k8s.io`, and the user cannot grant that permission. kind, k3d, and a rebuilt gateway image do not register the API. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI. The gateway for that track runs in minikube inside an OpenShift Virtualization Fedora VM (`minikube-vm`), not in the sandbox project.
 
 ## 1. Serve the small model
 

@@ -2,7 +2,7 @@ schemaVersion: 2.2.2
 metadata:
   name: hello-openshell
   displayName: OpenShell on Developer Sandbox
-  description: Dev Spaces workspace with the OpenShell 0.1.8 CLI. The Developer Sandbox cannot host the gateway.
+  description: Dev Spaces workspace with the OpenShell 0.1.8 CLI. A Fedora VM runs minikube for the gateway.
   language: Python
   projectType: openshell
   tags:
@@ -21,6 +21,15 @@ components:
       cpuLimit: "2"
       mountSources: true
       sourceMapping: /projects
+# Workspace terminal, in order:
+# 1. bash scripts/install-openshell-cli.sh
+# 2. bash scripts/sandbox-status.sh
+# 3. bash scripts/sandbox-vm-up.sh
+# 4. bash scripts/sandbox-vm-connect.sh
+# 5. bash scripts/sandbox-vm-sandbox.sh
+# 6. bash scripts/sandbox-ask.sh curl
+# 7. bash scripts/sandbox-ask.sh python
+# 8. bash scripts/sandbox-down.sh
 commands:
   - id: install-openshell-cli
     exec:
@@ -55,6 +64,33 @@ commands:
       commandLine: bash scripts/sandbox-status.sh
       workingDir: ${PROJECT_SOURCE}
       label: Project status
+      group:
+        kind: run
+        isDefault: false
+  - id: start-minikube-vm
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-up.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Start minikube VM
+      group:
+        kind: run
+        isDefault: false
+  - id: connect-minikube-gateway
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-connect.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Connect minikube gateway
+      group:
+        kind: run
+        isDefault: false
+  - id: create-minikube-sandbox
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-sandbox.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Create minikube sandbox
       group:
         kind: run
         isDefault: false
