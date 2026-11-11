@@ -1,0 +1,25 @@
+# OpenShell provider profile for Ollama on the host.
+# Sandboxes have no network of their own. The supervisor dials this host.
+# Do not use 127.0.0.1 or localhost: OpenShell always blocks those addresses.
+
+id: ollama
+display_name: Ollama on the host
+description: OpenAI-compatible Ollama API for llama3.2:1b
+category: inference
+inference_capable: true
+credentials: []
+
+endpoints:
+  - host: host.openshell.internal
+    port: 11434
+    protocol: rest
+    access: read-write
+    enforcement: enforce
+
+binaries:
+  - /usr/bin/python3
+  - /usr/bin/python3.*
+  - /usr/local/bin/python3
+  - /usr/local/bin/python3.*
+  - /opt/app-root/bin/python3
+  - /opt/app-root/bin/python3.*

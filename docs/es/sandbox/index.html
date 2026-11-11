@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenShell en Developer Sandbox</title>
+  <link rel="stylesheet" href="../../css/site.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="../index.html">
+        <span class="logos">
+          <span class="word">NVIDIA</span>
+          <img src="../../assets/logos/podman-logo.png" alt="Podman">
+          <img src="../../assets/logos/python-logo.svg" alt="Python">
+        </span>
+        <strong>hello-openshell</strong>
+      </a>
+      <nav class="tracks" aria-label="Recorridos">
+        <a href="../index.html">Local</a>
+        <a href="index.html" aria-current="page">Developer Sandbox</a>
+        <a href="../openshift/index.html">OpenShift</a>
+      </nav>
+      <nav class="lang" aria-label="Idioma">
+        <a href="../../sandbox/index.html">EN</a>
+        <a href="index.html" aria-current="page">ES</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="kicker">OpenShift Dev Spaces</p>
+      <h1>Developer Sandbox</h1>
+      <p class="lede">Abrí el repo en un workspace y llamá al Granite que el sandbox ya sirve. Este recorrido no instala el gateway de OpenShell y no pide una GPU. El mecanismo es el de <a href="https://github.com/maximilianoPizarro/camel-k-devsandbox">camel-k-devsandbox</a>.</p>
+      <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Abrir en Developer Sandbox</a></p>
+    </section>
+    <figure>
+      <img src="../../assets/diagrams/sandbox-architecture.jpg" alt="Workspace de Dev Spaces, token de oc whoami y predictor Granite compartido">
+      <figcaption>La cuota de GPU del proyecto es 0. El predictor vive en <code>sandbox-shared-models</code>.</figcaption>
+    </figure>
+    <article class="step">
+      <h2><span>1</span>Abrir el workspace</h2>
+      <p>Usá el botón, o en el <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> abrí <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> y creá un workspace con este repo. <code>devfile.yaml</code> pide 512Mi / 200m y limita el contenedor a 4Gi / 2 CPUs. El storage es efímero. Ninguna tarea corre al arrancar. Los comandos están en <a href="https://devfile.io/docs/2.2.2/defining-commands">Defining commands</a>.</p>
+    </article>
+    <article class="step">
+      <h2><span>2</span>Project status</h2>
+      <p>Terminal → Run Task… → <strong>Project status</strong>. Corre <code>scripts/sandbox-status.sh</code> y muestra <code>oc whoami</code>, el proyecto y la cuota. Las <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuotas</a> también cuentan el pod del workspace. El nombre de la tarea queda en inglés porque es el texto del IDE.</p>
+    </article>
+    <article class="step">
+      <h2><span>3</span>Ask Granite</h2>
+      <p>La tarea <strong>Ask Granite</strong> corre <code>scripts/sandbox-ask.sh curl</code>. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. La URL base por defecto es:</p>
+      <pre><code>https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1</code></pre>
+      <p>El script lista <code>/v1/models</code> y manda un chat completion. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>. Esta tarea no se ejecutó en la máquina donde se probó el camino local.</p>
+    </article>
+    <article class="step">
+      <h2><span>4</span>Ask with ask.py</h2>
+      <p>La tarea <strong>Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. El prompt del script es una frase en español.</p>
+    </article>
+    <article class="step">
+      <h2><span>5</span>Clean</h2>
+      <p>La tarea <strong>Clean</strong> borra objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra el modelo compartido ni el workspace.</p>
+    </article>
+    <section class="note warn">
+      <p><strong>Camino de administrador.</strong> Agent Sandbox, el chart de OpenShell y un Granite 3.3 2B propio piden un clúster que administres. Ese módulo es <a href="../openshift/index.html">OpenShift AI</a>.</p>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap">
+      <p>Red Hat, OpenShift y OpenShift Dev Spaces son marcas de Red Hat, Inc. Esos logos no se incluyen. Las marcas de NVIDIA, Podman y Python están en la <a href="../index.html">página local</a>.</p>
+    </div>
+  </footer>
+</body>
+</html>

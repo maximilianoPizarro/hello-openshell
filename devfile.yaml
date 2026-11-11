@@ -1,0 +1,60 @@
+schemaVersion: 2.2.2
+metadata:
+  name: hello-openshell
+  displayName: OpenShell on Developer Sandbox
+  description: Call the shared Granite model from OpenShift Dev Spaces. Does not install OpenShell or a GPU model.
+  language: Python
+  projectType: openshell
+  tags:
+    - OpenShift
+    - OpenShell
+    - Python
+  attributes:
+    controller.devfile.io/storage-type: ephemeral
+components:
+  - name: tools
+    container:
+      image: quay.io/devfile/universal-developer-image:ubi9-latest
+      memoryRequest: 512Mi
+      memoryLimit: 4Gi
+      cpuRequest: 200m
+      cpuLimit: "2"
+      mountSources: true
+      sourceMapping: /projects
+commands:
+  - id: project-status
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-status.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Project status
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-granite
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-ask.sh curl
+      workingDir: ${PROJECT_SOURCE}
+      label: Ask Granite
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-python
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-ask.sh python
+      workingDir: ${PROJECT_SOURCE}
+      label: Ask with ask.py
+      group:
+        kind: run
+        isDefault: false
+  - id: clean
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-down.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Clean
+      group:
+        kind: run
+        isDefault: false

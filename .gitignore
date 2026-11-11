@@ -1,0 +1,8 @@
+# Windows device name accidentally created in the tree
+NUL
+
+# Secrets and local env
+.env
+.env.*
+*.pem
+*.key

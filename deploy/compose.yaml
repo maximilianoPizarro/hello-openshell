@@ -1,0 +1,23 @@
+# One Ollama container. OpenShell sandboxes are created by the gateway, not by
+# this file. From the repo root: `podman compose -f deploy/compose.yaml up -d`
+#
+# llama3.2:1b is the local model. The OpenAI-compatible API is on port 11434.
+# The container is capped so it does not take the whole machine.
+
+services:
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_KEEP_ALIVE: "5m"
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 3g
+    cpus: 2.0
+
+volumes:
+  ollama:

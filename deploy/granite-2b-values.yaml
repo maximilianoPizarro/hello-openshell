@@ -1,0 +1,33 @@
+# Granite 3.3 2B Instruct on Red Hat OpenShift AI, one NVIDIA GPU.
+# Chart: redhat-ai-services/vllm-kserve. Reviewed against chart 0.7.1.
+# Confirm hardwareProfile.name on the cluster before installing. See the README.
+
+fullnameOverride: granite-2b
+
+hardwareProfile:
+  name: nvidia-gpu-serving
+  namespace: redhat-ods-applications
+
+model:
+  modelNameOverride: granite-3.3-2b-instruct
+  mode: uri
+  uri: oci://quay.io/redhat-ai-services/modelcar-catalog:granite-3.3-2b-instruct
+  args:
+    - "--max-model-len=4096"
+    - "--gpu-memory-utilization=0.90"
+    - "--enable-auto-tool-choice"
+    - "--tool-call-parser=granite"
+
+endpoint:
+  externalRoute:
+    enabled: false
+  auth:
+    enabled: true
+    serviceAccounts:
+      - name: granite-client
+        create: true
+        createLegacyToken: true
+
+scaling:
+  minReplicas: 1
+  maxReplicas: 1

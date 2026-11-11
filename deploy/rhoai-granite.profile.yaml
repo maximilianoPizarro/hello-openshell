@@ -1,0 +1,33 @@
+# OpenShell provider profile for the in-cluster vLLM Service.
+# Edit host and port so they match `oc get svc` before importing.
+# The sandbox receives RHOAI_API_TOKEN as an opaque placeholder. The supervisor
+# substitutes the real token only when the request targets this host and port.
+
+id: rhoai-granite
+display_name: Granite on OpenShift AI
+description: OpenAI-compatible vLLM Service for granite-3.3-2b-instruct
+category: inference
+inference_capable: true
+
+credentials:
+  - name: api_token
+    description: Service account token allowed to call the InferenceService
+    env_vars: [RHOAI_API_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+
+endpoints:
+  - host: granite-2b-predictor.rhoai-models.svc.cluster.local
+    port: 80
+    protocol: rest
+    access: read-write
+    enforcement: enforce
+
+binaries:
+  - /usr/bin/curl
+  - /usr/local/bin/curl
+  - /usr/bin/python3
+  - /usr/bin/python3.*
+  - /opt/app-root/bin/python3
+  - /opt/app-root/bin/python3.*

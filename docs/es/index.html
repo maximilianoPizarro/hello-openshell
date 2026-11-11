@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenShell en local con Podman</title>
+  <link rel="stylesheet" href="../css/site.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="index.html">
+        <span class="logos">
+          <span class="word">NVIDIA</span>
+          <img src="../assets/logos/podman-logo.png" alt="Podman">
+          <img src="../assets/logos/python-logo.svg" alt="Python">
+        </span>
+        <strong>hello-openshell</strong>
+      </a>
+      <nav class="tracks" aria-label="Recorridos">
+        <a href="index.html" aria-current="page">Local</a>
+        <a href="sandbox/index.html">Developer Sandbox</a>
+        <a href="openshift/index.html">OpenShift</a>
+      </nav>
+      <nav class="lang" aria-label="Idioma">
+        <a href="../index.html">EN</a>
+        <a href="index.html" aria-current="page">ES</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="kicker">Probado el 11 de noviembre de 2026</p>
+      <h1>OpenShell en tu máquina</h1>
+      <p class="lede">Un sandbox de Podman llama a Ollama <code>llama3.2:1b</code> por <code>host.openshell.internal:11434</code>. El gateway es OpenShell 0.1.8. El cliente es <code>examples/ask.py</code>.</p>
+    </section>
+    <div class="cards">
+      <a class="card" href="index.html"><h2>Local</h2><p>Podman, tope de 3 GiB, verificado en Windows 11.</p></a>
+      <a class="card" href="sandbox/index.html"><h2>Developer Sandbox</h2><p>Tareas de Dev Spaces contra el Granite compartido.</p></a>
+      <a class="card" href="openshift/index.html"><h2>OpenShift AI</h2><p>Clúster de admin, una GPU, el token queda en el gateway.</p></a>
+    </div>
+    <figure>
+      <img src="../assets/diagrams/local-architecture.jpg" alt="CLI, gateway, sandbox de Podman, supervisor y Ollama">
+      <figcaption>El sandbox no tiene red propia. El supervisor marca a Ollama.</figcaption>
+    </figure>
+
+    <article class="step">
+      <h2><span>0</span>Antes de empezar</h2>
+      <p>En esta máquina, Podman 6.1.4. La machine tiene que estar arriba y usar cgroup v2.</p>
+      <pre><code>podman machine start
+podman version
+podman info --format '{{json .Host}}' | findstr cgroupVersion</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>1</span>Levantar Ollama</h2>
+      <p>Un contenedor, 3 GiB y 2 CPUs. Desde la raíz del repo.</p>
+      <pre><code>podman compose -f deploy/compose.yaml up -d</code></pre>
+      <p>Desde Git Bash en Windows el puerto publicado está en la IPv4 de la machine, no en <code>127.0.0.1</code>.</p>
+      <pre><code>OLLAMA_IP=$(MSYS_NO_PATHCONV=1 podman machine ssh "ip -4 -o addr show eth0" | awk '{print $4}' | cut -d/ -f1 | head -1)
+until curl -fsS "http://${OLLAMA_IP}:11434/api/tags" >/dev/null; do sleep 2; done
+podman exec ollama ollama pull llama3.2:1b
+curl -sS "http://${OLLAMA_IP}:11434/v1/models" -H 'Authorization: Bearer fake'</code></pre>
+      <figure>
+        <img src="../assets/diagrams/local-windows-net.jpg" alt="Windows usa la IP de la machine, la machine usa 127.0.0.1 y el sandbox usa un nombre">
+        <figcaption>Dentro de la machine responde <code>127.0.0.1:11434</code>. El nombre del sandbox es <code>host.openshell.internal</code>.</figcaption>
+      </figure>
+    </article>
+    <article class="step">
+      <h2><span>2</span>Instalar OpenShell dentro de la machine</h2>
+      <p><code>podman machine ssh</code> entra como root. Instalá 0.1.8 y fijá el socket rootful.</p>
+      <pre><code>curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.1.8/install.sh | \
+  OPENSHELL_VERSION=v0.1.8 sh</code></pre>
+      <p>Bajo <code>[openshell.drivers.podman]</code> en <code>~/.config/openshell/gateway.toml</code>:</p>
+      <pre><code>socket_path = "/run/podman/podman.sock"</code></pre>
+      <pre><code>openshell-gateway config preflight --path ~/.config/openshell/gateway.toml
+systemctl --user restart openshell-gateway
+openshell gateway add https://127.0.0.1:17670 --local --name openshell
+openshell gateway select openshell
+openshell status</code></pre>
+      <p>Resultado esperado: Connected, versión 0.1.8.</p>
+    </article>
+    <article class="step">
+      <h2><span>3</span>Importar el perfil de Ollama</h2>
+      <pre><code>openshell profile lint -f deploy/ollama.profile.yaml
+openshell profile import -f deploy/ollama.profile.yaml
+openshell provider create --name ollama --type ollama
+openshell provider get ollama</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>4</span>Listar modelos desde un sandbox</h2>
+      <pre><code>openshell sandbox create \
+  --name model-check \
+  --from docker.io/library/python:3.12-alpine \
+  --provider ollama \
+  -- /usr/local/bin/python3 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'</code></pre>
+      <p>El JSON tiene que incluir <code>llama3.2:1b</code>.</p>
+    </article>
+    <article class="step">
+      <h2><span>5</span>Preguntar con ask.py</h2>
+      <figure>
+        <img src="../assets/diagrams/local-flow.jpg" alt="POST de ask.py, ALLOW de la política, dial del supervisor y respuesta del modelo">
+        <figcaption>La política permite el POST. El valor <code>fake</code> lo ve el proceso. No es una clave real.</figcaption>
+      </figure>
+      <pre><code>export MODEL_NAME=llama3.2:1b
+openshell sandbox create \
+  --name hello-agent \
+  --from docker.io/library/python:3.12-alpine \
+  --provider ollama \
+  --env OPENAI_BASE_URL=http://host.openshell.internal:11434/v1 \
+  --env "MODEL_NAME=${MODEL_NAME}" \
+  --env OPENAI_API_KEY=fake \
+  -- /usr/local/bin/python3 -c "$(cat examples/ask.py)"</code></pre>
+      <p>En esta máquina el modelo devolvió una frase y el log quedó en <code>HTTP:POST ALLOWED</code>.</p>
+    </article>
+    <article class="step">
+      <h2><span>6</span>Bajar el laboratorio</h2>
+      <pre><code>openshell sandbox delete hello-agent model-check
+openshell provider delete ollama
+openshell profile delete ollama
+podman compose -f deploy/compose.yaml down -v</code></pre>
+      <p>Ese volumen se llama <code>deploy_ollama</code>.</p>
+    </article>
+    <section class="note">
+      <p>La tabla de fallos está en el README en inglés. Documentación: <a href="https://docs.nvidia.com/openshell/latest/about/installation">instalación</a>, <a href="https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes">runtimes</a>, <a href="https://docs.nvidia.com/openshell/how-it-works/inference">inference</a>, <a href="https://github.com/ollama/ollama/blob/main/docs/openai.md">API OpenAI de Ollama</a>.</p>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap">
+      <p>Guía independiente. NVIDIA y OpenShell son marcas de NVIDIA Corporation. El archivo del logo de NVIDIA no se redistribuye. Podman es marca de Red Hat, Inc. El logo de Podman es el archivo del proyecto. Python y el logo de Python son marcas de la Python Software Foundation. Red Hat y OpenShift son marcas de Red Hat, Inc.</p>
+    </div>
+  </footer>
+</body>
+</html>

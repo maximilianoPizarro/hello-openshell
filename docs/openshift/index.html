@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenShell on OpenShift AI</title>
+  <link rel="stylesheet" href="../css/site.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="../index.html">
+        <span class="logos">
+          <span class="word">NVIDIA</span>
+          <img src="../assets/logos/podman-logo.png" alt="Podman">
+          <img src="../assets/logos/python-logo.svg" alt="Python">
+        </span>
+        <strong>hello-openshell</strong>
+      </a>
+      <nav class="tracks" aria-label="Tracks">
+        <a href="../index.html">Local</a>
+        <a href="../sandbox/index.html">Developer Sandbox</a>
+        <a href="index.html" aria-current="page">OpenShift</a>
+      </nav>
+      <nav class="lang" aria-label="Language">
+        <a href="index.html" aria-current="page">EN</a>
+        <a href="../es/openshift/index.html">ES</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="kicker">Cluster admin · OpenShift 4.19+</p>
+      <h1>OpenShift AI</h1>
+      <p class="lede">Granite 3.3 2B on one NVIDIA GPU, the OpenShell 0.1.8 gateway without the <code>privileged</code> SCC, and a sandbox that only sees the placeholder <code>RHOAI_API_TOKEN</code>. The long form is <a href="../openshift-ai.md">openshift-ai.md</a>. This module was not applied from the machine that ran the local path.</p>
+    </section>
+    <figure>
+      <img src="../assets/diagrams/openshift-architecture.jpg" alt="CLI, port-forward, gateway, supervisor replacing the token, vLLM on a GPU">
+      <figcaption>The supervisor substitutes the real token only for the host and port in the profile.</figcaption>
+    </figure>
+    <table>
+      <thead><tr><th>Piece</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>OpenShift</td><td>4.19 or later (Landlock)</td></tr>
+        <tr><td>OpenShift AI</td><td>3.x, single-model KServe</td></tr>
+        <tr><td>OpenShell chart</td><td>0.1.8</td></tr>
+        <tr><td>vllm-kserve</td><td>0.7.1</td></tr>
+        <tr><td>Model</td><td>granite-3.3-2b-instruct</td></tr>
+        <tr><td>Agent Sandbox</td><td>v1.0.10 <code>sandbox.yaml</code></td></tr>
+      </tbody>
+    </table>
+    <article class="step">
+      <h2><span>1</span>Serve the model</h2>
+      <p>You need <code>cluster-admin</code>, Helm 3, the <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/configuring_your_model-serving_platform/configuring-your-model-serving-platform_rhoai-admin">model-serving platform</a>, and the <a href="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/openshift/install-gpu-operator.html">GPU Operator</a>. Confirm <code>hardwareProfile</code> <code>nvidia-gpu-serving</code> in <code>redhat-ods-applications</code>.</p>
+      <pre><code>helm upgrade --install granite-2b redhat-ai-services/vllm-kserve \
+  --version 0.7.1 --namespace rhoai-models \
+  --values deploy/granite-2b-values.yaml --timeout 20m</code></pre>
+      <p>Chart 0.7.1 annotates auth on. Read <code>MODEL_HOST</code> and <code>MODEL_PORT</code> from the Service. A headless Service uses <code>targetPort</code> 8080. Put those values in <code>deploy/rhoai-granite.profile.yaml</code> before import. Do not print the token.</p>
+    </article>
+    <article class="step">
+      <h2><span>2</span>Agent Sandbox and the gateway</h2>
+      <pre><code>oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
+helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart \
+  --version 0.1.8 --namespace openshell \
+  --set podSecurityContext.fsGroup=null \
+  --set securityContext.runAsUser=null</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>3</span>CLI, mTLS, provider</h2>
+      <p>Port-forward <code>svc/openshell</code> <code>8080:8080</code>. Copy <code>openshell-client-tls</code> into <code>~/.config/openshell/gateways/openshift/mtls/</code>. Then:</p>
+      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name openshift
+openshell gateway select openshift
+openshell provider create --name rhoai-granite --type rhoai-granite \
+  --credential RHOAI_API_TOKEN
+unset RHOAI_API_TOKEN</code></pre>
+      <p>Publishing a shared gateway is in <a href="https://docs.nvidia.com/openshell/kubernetes/openshift">OpenShell on OpenShift</a>.</p>
+    </article>
+    <article class="step">
+      <h2><span>4</span>Sandbox and ask.py</h2>
+      <p><code>model-check</code> uses <code>ubi9/toolbox</code> and <code>/usr/bin/curl</code>. <code>hello-agent</code> uses <code>ubi9/python-312</code> and <code>/opt/app-root/bin/python3</code>. The shell expands <code>MODEL_HOST</code>. <code>\${RHOAI_API_TOKEN}</code> stays literal until the sandbox shell runs. Every command is in <a href="../openshift-ai.md">openshift-ai.md</a>.</p>
+    </article>
+    <article class="step">
+      <h2><span>5</span>Uninstall</h2>
+      <pre><code>helm uninstall openshell -n openshell
+helm uninstall granite-2b -n rhoai-models
+oc delete namespace openshell rhoai-models
+oc delete -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml</code></pre>
+      <p>That leaves OpenShift AI and the GPU Operator in place.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="wrap">
+      <p>Red Hat and OpenShift are trademarks of Red Hat, Inc. NVIDIA marks are named on the <a href="../index.html">local page</a>. This page does not ship those logo files.</p>
+    </div>
+  </footer>
+</body>
+</html>
