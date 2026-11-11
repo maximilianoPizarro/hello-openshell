@@ -21,31 +21,76 @@ components:
       cpuLimit: "2"
       mountSources: true
       sourceMapping: /projects
-# Workspace terminal, in order:
-# 1. bash scripts/install-openshell-cli.sh
-# 2. bash scripts/sandbox-status.sh
-# 3. bash scripts/sandbox-vm-up.sh
-# 4. bash scripts/sandbox-vm-connect.sh
-# 5. bash scripts/sandbox-vm-sandbox.sh
-# 6. bash scripts/sandbox-ask.sh curl
-# 7. bash scripts/sandbox-ask.sh python
-# 8. bash scripts/sandbox-down.sh
 commands:
   - id: install-openshell-cli
     exec:
       component: tools
       commandLine: bash scripts/install-openshell-cli.sh
       workingDir: ${PROJECT_SOURCE}
-      label: Install OpenShell CLI
+      label: "1. Install OpenShell CLI"
       group:
         kind: run
         isDefault: false
-  - id: install-openshell-cli-on-start
+  - id: project-status
     exec:
       component: tools
-      commandLine: bash -c 'i=0; while [ ! -f scripts/install-openshell-cli.sh ] && [ "$i" -lt 15 ]; do i=$((i+1)); sleep 2; done; bash scripts/install-openshell-cli.sh || echo "OpenShell CLI was not installed. Run the Install OpenShell CLI task."'
+      commandLine: bash scripts/sandbox-status.sh
       workingDir: ${PROJECT_SOURCE}
-      label: Install OpenShell CLI on start
+      label: "2. Project status"
+      group:
+        kind: run
+        isDefault: false
+  - id: start-minikube-vm
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-up.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "3. Start minikube VM"
+      group:
+        kind: run
+        isDefault: false
+  - id: connect-minikube-gateway
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-connect.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "4. Connect minikube gateway"
+      group:
+        kind: run
+        isDefault: false
+  - id: create-minikube-sandbox
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-vm-sandbox.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "5. Create minikube sandbox"
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-granite
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-ask.sh curl
+      workingDir: ${PROJECT_SOURCE}
+      label: "6. Ask Granite"
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-python
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-ask.sh python
+      workingDir: ${PROJECT_SOURCE}
+      label: "7. Ask with ask.py"
+      group:
+        kind: run
+        isDefault: false
+  - id: clean
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-down.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "8. Clean"
       group:
         kind: run
         isDefault: false
@@ -58,69 +103,12 @@ commands:
       group:
         kind: run
         isDefault: false
-  - id: project-status
+  - id: install-openshell-cli-on-start
     exec:
       component: tools
-      commandLine: bash scripts/sandbox-status.sh
+      commandLine: bash -c 'i=0; while [ ! -f scripts/install-openshell-cli.sh ] && [ "$i" -lt 15 ]; do i=$((i+1)); sleep 2; done; bash scripts/install-openshell-cli.sh || echo "OpenShell CLI was not installed. Run task 1. Install OpenShell CLI."'
       workingDir: ${PROJECT_SOURCE}
-      label: Project status
-      group:
-        kind: run
-        isDefault: false
-  - id: start-minikube-vm
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-vm-up.sh
-      workingDir: ${PROJECT_SOURCE}
-      label: Start minikube VM
-      group:
-        kind: run
-        isDefault: false
-  - id: connect-minikube-gateway
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-vm-connect.sh
-      workingDir: ${PROJECT_SOURCE}
-      label: Connect minikube gateway
-      group:
-        kind: run
-        isDefault: false
-  - id: create-minikube-sandbox
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-vm-sandbox.sh
-      workingDir: ${PROJECT_SOURCE}
-      label: Create minikube sandbox
-      group:
-        kind: run
-        isDefault: false
-  - id: ask-granite
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-ask.sh curl
-      workingDir: ${PROJECT_SOURCE}
-      label: Ask Granite
-      group:
-        kind: run
-        isDefault: false
-  - id: ask-python
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-ask.sh python
-      workingDir: ${PROJECT_SOURCE}
-      label: Ask with ask.py
-      group:
-        kind: run
-        isDefault: false
-  - id: clean
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-down.sh
-      workingDir: ${PROJECT_SOURCE}
-      label: Clean
-      group:
-        kind: run
-        isDefault: false
+      label: Install OpenShell CLI on start
 events:
   postStart:
     - install-openshell-cli-on-start

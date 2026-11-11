@@ -209,20 +209,20 @@ Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/docume
 
 The sandbox project cannot install the gateway. It cannot create CRDs, namespaces, or ClusterRoles, and `agents.x-k8s.io` is not served, so Helm chart 0.1.8 stops if you point it at that API. GPU quota for the user project is typically 0. The workspace still installs the CLI. OpenShift Virtualization in the same project runs `minikube-vm`, a Fedora guest. minikube on that guest uses the Podman driver and containerd, and cloud-init installs Agent Sandbox v1.0.10 plus the chart there. Run the commands in the workspace shell. That shell resolves `minikube-vm.<project>.svc.cluster.local`. A laptop does not.
 
-| Order | Task | Command |
-| --- | --- | --- |
-| 1 | Install OpenShell CLI | `bash scripts/install-openshell-cli.sh` (also on workspace start) |
-| 2 | Project status | `bash scripts/sandbox-status.sh` |
-| 3 | Start minikube VM | `bash scripts/sandbox-vm-up.sh` (also runs the connect script) |
-| 4 | Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
-| 5 | Create minikube sandbox | `bash scripts/sandbox-vm-sandbox.sh` |
-| 6 | Ask Granite | `bash scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
-| 7 | Ask with ask.py | `bash scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
-| 8 | Clean | `bash scripts/sandbox-down.sh` |
+| Task | Command |
+| --- | --- |
+| 1. Install OpenShell CLI | `bash scripts/install-openshell-cli.sh` (also on workspace start) |
+| 2. Project status | `bash scripts/sandbox-status.sh` |
+| 3. Start minikube VM | `bash scripts/sandbox-vm-up.sh` (also runs the connect script) |
+| 4. Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
+| 5. Create minikube sandbox | `bash scripts/sandbox-vm-sandbox.sh` |
+| 6. Ask Granite | `bash scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
+| 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
+| 8. Clean | `bash scripts/sandbox-down.sh` |
 
 **OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand.
 
-Command 3 applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource and gzip-encodes [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) into cloud-init. Inline user data is capped at 2048 bytes, and the admission webhook requires `user: fedora` in that text. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run command 3 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **Clean** first. The first successful boot is the one that installs the gateway.
+Command 3 applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource and gzip-encodes [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) into cloud-init. Inline user data is capped at 2048 bytes, and the admission webhook requires `user: fedora` in that text. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run command 3 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **8. Clean** first. The first successful boot is the one that installs the gateway.
 
 | Piece | Value |
 | --- | --- |
@@ -347,7 +347,7 @@ The admin path (OpenShift 4.19+, Agent Sandbox v1.0.10, Helm chart 0.1.8, vLLM c
 | Gateway | The gateway creates no containers | `socket_path` must be the daemon that lists `ollama`. |
 | Image | Sandbox exits naming Landlock or seccomp | The kernel refused the filter. OpenShell 0.1.8 needs that check. On the VM path the kernel is the Fedora guest, not the Dev Spaces node. |
 | VM | Guest log says `DRV_AS_ROOT` | minikube 1.39 refuses the Podman driver as root unless `--force` is set. Clean the VM so cloud-init runs the current guest script. |
-| VM | SSH to the guest says `Permission denied` | Cloud-init kept the key from the first boot. Run Clean, then Start minikube VM. |
+| VM | SSH to the guest says `Permission denied` | Cloud-init kept the key from the first boot. Run 8. Clean, then 3. Start minikube VM. |
 | Policy | `no matching policy` names a binary | On the hardened image the interpreter is `/usr/bin/python3.12`. Update the profile and keep `resource_version`. |
 | Policy | `configure an explicit workload group` | The image user `65532` has primary group `0`. Pass `--policy deploy/hi-python.policy.yaml`. |
 | Policy | `resolves to always-blocked address` | The sandbox URL used loopback. Use `host.openshell.internal`. |

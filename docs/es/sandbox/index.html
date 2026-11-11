@@ -46,7 +46,7 @@
     </article>
     <article class="step">
       <h2><span>2</span>Comandos del devfile</h2>
-      <p>Estos son los comandos <code>exec</code>, en el orden de ejecución. <strong>Start minikube VM</strong> ya corre <strong>Connect minikube gateway</strong> al final. Connect solo hace falta otra vez si la VM ya estaba arriba. <strong>OpenShell version</strong> es opcional: <code>openshell --version</code> (no existe <code>openshell version</code>). Los nombres de las tareas quedan en inglés porque son el texto del IDE.</p>
+      <p>Estos son los comandos <code>exec</code>, en el orden de ejecución. <strong>3. Start minikube VM</strong> ya corre <strong>4. Connect minikube gateway</strong> al final. Connect solo hace falta otra vez si la VM ya estaba arriba. <strong>OpenShell version</strong> es opcional: <code>openshell --version</code> (no existe <code>openshell version</code>). Los nombres de las tareas quedan en inglés porque son el texto del IDE.</p>
       <pre><code>1. bash scripts/install-openshell-cli.sh
 2. bash scripts/sandbox-status.sh
 3. bash scripts/sandbox-vm-up.sh
@@ -68,11 +68,11 @@
           <tr><td>Gateway</td><td>Agent Sandbox v1.0.10, chart de OpenShell 0.1.8</td></tr>
         </tbody>
       </table>
-      <p>El script del guest corre como root. minikube 1.39 sale con <code>DRV_AS_ROOT</code> si falta <code>--force</code>. También se detiene si <code>landlock</code> no está en <code>/sys/kernel/security/lsm</code>. Los contenedores usan ese kernel. Developer Sandbox apaga las VMs Linux a la hora. Volvé a correr la misma tarea después. Si la VM ya existe, el script deja el disco y el cloud-init como están, así que un script de arranque nuevo pide <strong>Clean</strong> antes. El primer arranque que termina instala el gateway. Connect espera hasta 40 minutos a <code>/var/lib/hello-openshell/ready</code>. Si ese archivo no aparece, el log del guest es <code>/var/log/cloud-init-output.log</code>.</p>
+      <p>El script del guest corre como root. minikube 1.39 sale con <code>DRV_AS_ROOT</code> si falta <code>--force</code>. También se detiene si <code>landlock</code> no está en <code>/sys/kernel/security/lsm</code>. Los contenedores usan ese kernel. Developer Sandbox apaga las VMs Linux a la hora. Volvé a correr la misma tarea después. Si la VM ya existe, el script deja el disco y el cloud-init como están, así que un script de arranque nuevo pide <strong>8. Clean</strong> antes. El primer arranque que termina instala el gateway. Connect espera hasta 40 minutos a <code>/var/lib/hello-openshell/ready</code>. Si ese archivo no aparece, el log del guest es <code>/var/log/cloud-init-output.log</code>.</p>
     </article>
     <article class="step">
       <h2><span>4</span>Crear el sandbox</h2>
-      <p>La tarea <strong>Create minikube sandbox</strong> corre <code>scripts/sandbox-vm-sandbox.sh</code>. Conecta el CLI a <code>https://127.0.0.1:8080</code> por un túnel SSH (el certificado del servidor incluye localhost), selecciona el gateway <code>minikube</code> y crea el sandbox en el clúster de la VM:</p>
+      <p>La tarea <strong>5. Create minikube sandbox</strong> corre <code>scripts/sandbox-vm-sandbox.sh</code>. Conecta el CLI a <code>https://127.0.0.1:8080</code> por un túnel SSH (el certificado del servidor incluye localhost), selecciona el gateway <code>minikube</code> y crea el sandbox en el clúster de la VM:</p>
       <pre><code>openshell gateway select minikube
 openshell sandbox create \
   --name model-check \
@@ -83,17 +83,17 @@ openshell sandbox create \
     </article>
     <article class="step">
       <h2><span>5</span>Ask Granite</h2>
-      <p>La tarea <strong>Ask Granite</strong> no usa la VM. Corre <code>scripts/sandbox-ask.sh curl</code> contra un predictor que el workspace pueda resolver. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. Definí la URL base primero:</p>
+      <p>La tarea <strong>6. Ask Granite</strong> no usa la VM. Corre <code>scripts/sandbox-ask.sh curl</code> contra un predictor que el workspace pueda resolver. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. Definí la URL base primero:</p>
       <pre><code>export SANDBOX_MODEL_BASE=https://&lt;predictor&gt;.&lt;namespace&gt;.svc.cluster.local:8443/v1</code></pre>
       <p>El script lista <code>/v1/models</code> y manda un chat completion. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
     </article>
     <article class="step">
       <h2><span>6</span>Ask with ask.py</h2>
-      <p>La tarea <strong>Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. También necesita <code>SANDBOX_MODEL_BASE</code>. El prompt del script es una frase en español.</p>
+      <p>La tarea <strong>7. Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. También necesita <code>SANDBOX_MODEL_BASE</code>. El prompt del script es una frase en español.</p>
     </article>
     <article class="step">
       <h2><span>7</span>Clean</h2>
-      <p>La tarea <strong>Clean</strong> corta el túnel SSH y borra <code>minikube-vm</code> más los objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
+      <p>La tarea <strong>8. Clean</strong> corta el túnel SSH y borra <code>minikube-vm</code> más los objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
     </article>
     <section class="note warn">
       <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida, así que el chart 0.1.8 no se puede instalar en el proyecto. El chart corre dentro del minikube de la VM de OpenShift Virtualization, donde esos límites no aplican. No pases valores de SCC de OpenShift a ese minikube. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>
