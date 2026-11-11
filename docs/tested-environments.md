@@ -18,4 +18,4 @@ Platform notes that affected the scripts:
 - On hosts with a Podman machine (macOS, Windows), the gateway installer runs inside the machine.
 - On Windows with default WSL NAT, published ports may not answer on `127.0.0.1` from the Windows side. Mirrored networking or the machine IPv4 both work; `scripts/ollama-url.sh` picks whichever answers first.
 
-The Developer Sandbox and OpenShift AI tracks are documented as experimental or admin reference. They were not treated as a verified end-to-end path in the same way as the local Podman flow.
+The Developer Sandbox and OpenShift AI tracks are documented as experimental or admin reference. They were not treated as a verified end-to-end path in the same way as the local Podman flow. On a Developer Sandbox project the stock chart stops before install. With the preflight disabled, the gateway container starts only after `runAsUser` is removed, then exits because `sandboxes.agents.x-k8s.io` is not served.

@@ -62,7 +62,7 @@
       <p>Task <strong>Clean</strong> deletes objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. It does not delete shared models or the workspace.</p>
     </article>
     <section class="note warn">
-      <p><strong>Gateway.</strong> A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and <code>agents.x-k8s.io</code> is not served. Helm chart 0.1.8 stops there, so the gateway is not installed. <code>openshell --version</code> works after the CLI install. <code>openshell status</code> needs a gateway. A cluster you administer is the <a href="../openshift/index.html">OpenShift AI</a> module.</p>
+      <p><strong>Gateway.</strong> A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and <code>agents.x-k8s.io</code> is not served. Helm chart 0.1.8 stops there. If the preflight is skipped, the process still exits while listing <code>sandboxes.agents.x-k8s.io</code>. <code>openshell --version</code> works after the CLI install. <code>openshell status</code> needs a gateway. A cluster you administer is the <a href="../openshift/index.html">OpenShift AI</a> module.</p>
     </section>
   </main>
   <footer>

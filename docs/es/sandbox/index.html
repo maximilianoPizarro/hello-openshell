@@ -62,7 +62,7 @@
       <p>La tarea <strong>Clean</strong> borra objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
     </article>
     <section class="note warn">
-      <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida. El chart 0.1.8 se detiene ahí, así que el gateway no se instala. <code>openshell --version</code> funciona después de instalar el CLI. <code>openshell status</code> necesita un gateway. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>
+      <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida. El chart 0.1.8 se detiene ahí. Si se salta el preflight, el proceso igual sale al listar <code>sandboxes.agents.x-k8s.io</code>. <code>openshell --version</code> funciona después de instalar el CLI. <code>openshell status</code> necesita un gateway. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>
     </section>
   </main>
   <footer>

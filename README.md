@@ -205,7 +205,7 @@ podman stats --no-stream ollama
 
 Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary, into `~/.local/bin`). A failed install does not stop the workspace. Other tasks wait until you choose them (**Terminal → Run Task…**).
 
-This track does not install the gateway. A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and `agents.x-k8s.io` is not served, so Helm chart 0.1.8 stops. GPU quota for the user project is typically 0. After the CLI install, check with `openshell --version`. `openshell status` needs a gateway.
+This track does not install the gateway. A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and `agents.x-k8s.io` is not served, so Helm chart 0.1.8 stops. Skipping that preflight lets the Pod start only when `runAsUser` is unset; the process then exits because it lists `sandboxes.agents.x-k8s.io`. A namespace Role cannot grant that API, and kind, k3d, or a rebuilt gateway image cannot register it. GPU quota for the user project is typically 0. After the CLI install, check with `openshell --version`. `openshell status` needs a gateway.
 
 | Task | What it runs |
 | --- | --- |

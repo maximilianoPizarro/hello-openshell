@@ -1,0 +1,15 @@
+# OpenShift restricted-v2. Helm merges maps, so
+# `--set securityContext.runAsUser=null` keeps the chart default UID 1000.
+# Setting these keys to null removes them and lets the SCC assign the project UID.
+podSecurityContext: null
+supervisor:
+  podSecurityContext: null
+securityContext:
+  runAsUser: null
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault

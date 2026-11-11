@@ -59,7 +59,7 @@ The last command must list an NVIDIA hardware profile. [deploy/granite-2b-values
 
 If `GPU` is empty, the GPU Operator has not published `nvidia.com/gpu` yet. Stop there. vLLM will not start the model.
 
-A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. That project cannot create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` is not served, and the GPU quota is 0. The Helm chart stops in that case. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI only.
+A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. That project cannot create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` is not served, and the GPU quota is 0. The Helm chart stops in that case. Skipping the preflight and the cluster Role still does not help: the gateway process exits while listing `sandboxes.agents.x-k8s.io`, and the user cannot grant that permission. kind, k3d, and a rebuilt gateway image do not register the API. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI only.
 
 ## 1. Serve the small model
 
@@ -162,7 +162,7 @@ oc -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --
 
 That manifest is the Agent Sandbox v1.0.10 core, the release current when this guide was written. OpenShell needs the CRD `sandboxes.agents.x-k8s.io` and the controller. The project extensions are a different manifest and this guide does not use them. The `agent-sandbox-controller` Deployment must be `Running`.
 
-Install the gateway with the restricted OpenShift posture. Clearing `fsGroup` and `runAsUser` lets the `restricted-v2` SCC assign the namespace UID. The gateway and the sandboxes run without extra capabilities.
+Install the gateway with the restricted OpenShift posture. [deploy/openshift-scc-values.yaml](../deploy/openshift-scc-values.yaml) sets `podSecurityContext` and `runAsUser` to null so the `restricted-v2` SCC assigns the namespace UID. Do not pass `--set podSecurityContext.fsGroup=null` or `--set securityContext.runAsUser=null`: Helm merges those maps with the chart defaults and leaves `runAsUser: 1000`, which `restricted-v2` rejects.
 
 ```bash
 oc create namespace openshell
@@ -171,8 +171,7 @@ helm upgrade --install openshell \
   oci://ghcr.io/nvidia/openshell/helm-chart \
   --version 0.1.8 \
   --namespace openshell \
-  --set podSecurityContext.fsGroup=null \
-  --set securityContext.runAsUser=null
+  --values deploy/openshift-scc-values.yaml
 
 oc -n openshell rollout status statefulset/openshell --timeout=300s
 oc -n openshell get pods,svc,statefulset
@@ -185,7 +184,7 @@ oc get jobs,pods -n openshell
 oc describe pod -n openshell -l app.kubernetes.io/name=openshell
 ```
 
-An `unable to validate against any security context constraint` error on the gateway is fixed by the two `--set` flags above. A Landlock or seccomp user-notification error shows up later, when the first sandbox is created, and means the node is not OpenShift 4.19+ or the node runtime will not install the filter from a process without capabilities.
+An `unable to validate against any security context constraint` error that names UID `1000` means the chart default `runAsUser` is still set. Install with [deploy/openshift-scc-values.yaml](../deploy/openshift-scc-values.yaml). A Landlock or seccomp user-notification error shows up later, when the first sandbox is created, and means the node is not OpenShift 4.19+ or the node runtime will not install the filter from a process without capabilities.
 
 ## 3. Connect the CLI
 

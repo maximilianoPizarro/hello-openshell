@@ -62,8 +62,8 @@
       <pre><code>oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart \
   --version 0.1.8 --namespace openshell \
-  --set podSecurityContext.fsGroup=null \
-  --set securityContext.runAsUser=null</code></pre>
+  --values deploy/openshift-scc-values.yaml</code></pre>
+      <p><code>deploy/openshift-scc-values.yaml</code> clears <code>podSecurityContext</code> and <code>runAsUser</code>. <code>--set</code> those keys to <code>null</code> leaves the chart default UID 1000, and <code>restricted-v2</code> rejects it.</p>
     </article>
     <article class="step">
       <h2><span>3</span>CLI, mTLS, provider</h2>
