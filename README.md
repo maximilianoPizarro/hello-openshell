@@ -18,7 +18,7 @@
 | Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
 | Developer Sandbox | OpenShift Dev Spaces | An OpenAI-compatible predictor you can reach from the workspace |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
-| Cloud Shell | minikube inside Cloud Shell | Whatever OpenAI-compatible endpoint the sandbox can reach |
+| Cloud Shell | minikube inside Cloud Shell | Gateway only. This kernel cannot run a sandbox. |
 
 The step-by-step site is in [docs/](docs/index.html) (English and Spanish). The cluster write-up is [docs/openshift-ai.md](docs/openshift-ai.md). What this guide was written against is in [docs/tested-environments.md](docs/tested-environments.md).
 
@@ -228,12 +228,24 @@ Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 
 Cloud Shell already includes [minikube](https://minikube.sigs.k8s.io/docs/start/). The cluster runs in that VM, the same pattern as [jitsi-helm](https://github.com/maximilianoPizarro/jitsi-helm). It does not create a GKE cluster and it does not keep a separate bill. You administer it, so you can install the Agent Sandbox CRD. Do not use [deploy/openshift-scc-values.yaml](deploy/openshift-scc-values.yaml) here. That file is for OpenShift `restricted-v2`.
 
-Use containerd. The Docker runtime does not advertise `supplementalGroupsPolicy`, and the sandbox pod sets that field to `Strict`. Cloud Shell exports `MINIKUBE_FORCE_SYSTEMD=true`. Pass `--force-systemd=false` so runc accepts the kubelet cgroupfs path. The node is usable when the runtime is `containerd://2` and `strict=true`.
+Use containerd. On minikube 1.38.1 the Docker runtime reports `docker://29.2.1` and leaves `supplementalGroupsPolicy` empty. The sandbox pod sets that field to `Strict`, and the kubelet rejects it with `SupplementalGroupsPolicyNotSupported`. Cloud Shell also exports `MINIKUBE_FORCE_SYSTEMD=true`. With that set, containerd 2.2.1 asks runc for a systemd cgroup path while the kubelet, under `cgroups-per-qos=false`, sends `/k8s.io/...`. The control plane never listens. `NodeHasNoDiskPressure` is set while this happens. A disk warning at 95% is not that failure.
 
 ```bash
 MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false
-kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'
+```
 
+If `kubeadm` still waits four minutes and the kubelet log names `slice:prefix:name`, switch containerd to cgroupfs in the running container. The next init attempt can then finish. The node that came up this way was Kubernetes 1.35.1, `containerd://2.2.1`, `strict=true`.
+
+```bash
+docker exec minikube sed -i 's/SystemdCgroup = true/SystemdCgroup = false/' /etc/containerd/config.toml
+docker exec minikube systemctl restart containerd
+docker exec minikube systemctl restart kubelet
+kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'
+```
+
+Install the CRD only after that check prints `containerd://2` and `strict=true`.
+
+```bash
 kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
 
@@ -267,12 +279,15 @@ kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.cr
 kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.key}' | base64 -d \
   > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
 chmod 600 "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+openshell gateway remove minikube
 openshell gateway add https://127.0.0.1:8080 --local --name minikube
 openshell gateway select minikube
 openshell status
 ```
 
-The Cloud Shell kernel has no `CONFIG_SECURITY_LANDLOCK`. Minikube's docker driver uses that kernel, so the agent container exits immediately with `Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented`. The gateway stays up. A sandbox needs a different kernel. The command below is the check that produced that result.
+`openshell gateway remove` prints `No gateway metadata found for 'minikube'` the first time. The `add` on the next line still registers it. `openshell status` then shows `Connected` and `Authenticated (mTLS transport)` for 0.1.8.
+
+The hardened image does pull (`registry.access.redhat.com/hi/python:3.12`, about 39 MB). The `agent` container then exits 1 in the same second. `kubectl logs -n openshell default--model-check -c agent` prints `Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented (kernel lacks CONFIG_SECURITY_LANDLOCK)`. Minikube's docker driver uses the Cloud Shell kernel, and that kernel does not implement Landlock. The supervisor process starts, and its readiness probe to port 5501 stays refused because the agent is already dead. `openshell-0` stays `Running`. A sandbox needs a kernel with Landlock ABI v3. The command below is the check.
 
 ```bash
 openshell sandbox create \

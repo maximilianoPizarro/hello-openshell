@@ -39,7 +39,7 @@
     <table>
       <thead><tr><th>Pieza</th><th>Versión</th></tr></thead>
       <tbody>
-        <tr><td>Clúster</td><td>minikube, driver docker</td></tr>
+        <tr><td>Clúster</td><td>minikube 1.38.1, Kubernetes 1.35.1, containerd 2.2.1</td></tr>
         <tr><td>Agent Sandbox</td><td>v1.0.10 <code>sandbox.yaml</code></td></tr>
         <tr><td>Chart de OpenShell</td><td>0.1.8</td></tr>
         <tr><td>CLI</td><td>tarball musl 0.1.8</td></tr>
@@ -49,8 +49,12 @@
     <article class="step">
       <h2><span>1</span>Arrancar minikube</h2>
       <p>Administrás este clúster, así que podés instalar el CRD de Agent Sandbox. No uses <code>deploy/openshift-scc-values.yaml</code>. Ese archivo es para la SCC <code>restricted-v2</code> de OpenShift.</p>
-      <p>Usá containerd. Cloud Shell exporta <code>MINIKUBE_FORCE_SYSTEMD=true</code>, y esa combinación hace que runc rechace la ruta de cgroup del kubelet. Seguí solo si el nodo imprime <code>containerd://2</code> y <code>strict=true</code>.</p>
-      <pre><code>MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false
+      <p>El runtime Docker de este host fue <code>docker://29.2.1</code>. No anuncia <code>supplementalGroupsPolicy</code>, y el <code>Strict</code> del sandbox termina en <code>SupplementalGroupsPolicyNotSupported</code>. Cloud Shell exporta <code>MINIKUBE_FORCE_SYSTEMD=true</code>. Con containerd 2.2.1, runc pide <code>slice:prefix:name</code> y el kubelet, con <code>cgroups-per-qos=false</code>, manda <code>/k8s.io/...</code>. El control plane no escucha. El kubelet igual informa <code>NodeHasNoDiskPressure</code>.</p>
+      <pre><code>MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false</code></pre>
+      <p>Si <code>kubeadm</code> sigue esperando a los cuatro minutos y el log del kubelet nombra <code>slice:prefix:name</code>, pasá containerd a cgroupfs. El intento siguiente puede terminar. Seguí solo si el nodo imprime <code>containerd://2</code> y <code>strict=true</code>.</p>
+      <pre><code>docker exec minikube sed -i 's/SystemdCgroup = true/SystemdCgroup = false/' /etc/containerd/config.toml
+docker exec minikube systemctl restart containerd
+docker exec minikube systemctl restart kubelet
 kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'</code></pre>
     </article>
     <article class="step">
@@ -82,18 +86,22 @@ kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.cr
 kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.key}' | base64 -d \
   &gt; "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
 chmod 600 "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+openshell gateway remove minikube
 openshell gateway add https://127.0.0.1:8080 --local --name minikube
 openshell gateway select minikube
 openshell status</code></pre>
+      <p>El primer <code>gateway remove</code> imprime <code>No gateway metadata found for 'minikube'</code>. El <code>add</code> de la línea siguiente igual registra los certificados de este clúster. <code>openshell status</code> queda en <code>Connected</code> para 0.1.8.</p>
     </article>
     <article class="step">
       <h2><span>4</span>Prueba</h2>
-      <p>En Cloud Shell el contenedor <code>agent</code> sale con código 1 en el mismo segundo en que arranca. El log es <code>Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented</code>. Minikube usa el kernel de Cloud Shell, y ese kernel no tiene <code>CONFIG_SECURITY_LANDLOCK</code>. El gateway queda arriba. El sandbox necesita otro kernel.</p>
+      <p>La imagen se baja. El contenedor <code>agent</code> sale con código 1 en el mismo segundo. El supervisor arranca y su readiness al puerto 5501 sigue rechazada. <code>openshell-0</code> queda <code>Running</code>.</p>
       <pre><code>openshell sandbox create \
   --name model-check \
   --from registry.access.redhat.com/hi/python:3.12 \
   --policy deploy/hi-python.policy.yaml \
-  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
+  -- /usr/bin/python3.12 -c 'print("ok")'
+kubectl logs -n openshell default--model-check -c agent</code></pre>
+      <p>Ese log es <code>Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented (kernel lacks CONFIG_SECURITY_LANDLOCK)</code>. El driver docker de minikube usa el kernel de Cloud Shell. Un sandbox necesita un kernel con Landlock ABI v3.</p>
     </article>
     <article class="step">
       <h2><span>5</span>Borrar el clúster</h2>

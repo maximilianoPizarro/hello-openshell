@@ -10,6 +10,15 @@ Cloud Shell already includes minikube. Use containerd, and do not force systemd.
 MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false
 ```
 
+If kubeadm is still waiting after four minutes and the kubelet log names `slice:prefix:name`, containerd is still on systemd cgroups. Switch it, then let the next init attempt finish. Continue only when the node prints `containerd://2` and `strict=true`. The Docker runtime (`docker://29.2.1`) rejects the sandbox with `SupplementalGroupsPolicyNotSupported`.
+
+```bash
+docker exec minikube sed -i 's/SystemdCgroup = true/SystemdCgroup = false/' /etc/containerd/config.toml
+docker exec minikube systemctl restart containerd
+docker exec minikube systemctl restart kubelet
+kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'
+```
+
 ## Install Agent Sandbox
 
 OpenShell does not install this CRD. You can apply it because you administer this cluster.
@@ -55,18 +64,22 @@ kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.ca\.crt
 kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.crt}' | base64 -d > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.crt"
 kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.key}' | base64 -d > "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
 chmod 600 "${HOME}/.config/openshell/gateways/minikube/mtls/tls.key"
+openshell gateway remove minikube
 openshell gateway add https://127.0.0.1:8080 --local --name minikube
 openshell gateway select minikube
 openshell status
 ```
 
+The first `gateway remove` prints `No gateway metadata found for 'minikube'`. The following `add` still registers the certificates. `openshell status` then shows `Connected`.
+
 ## Smoke test
 
 ```bash
 openshell sandbox create --name model-check --from registry.access.redhat.com/hi/python:3.12 --policy deploy/hi-python.policy.yaml -- /usr/bin/python3.12 -c 'print("ok")'
+kubectl logs -n openshell default--model-check -c agent
 ```
 
-On Cloud Shell this command exits 1. The kernel has no `CONFIG_SECURITY_LANDLOCK`, and minikube uses that kernel. OpenShell 0.1.8 requires Landlock ABI v3 (Linux 6.2+). The gateway process stays up.
+The image pulls. The agent container exits 1 in the same second. The log says Landlock ABI v3 is required and `CONFIG_SECURITY_LANDLOCK` is missing. The supervisor starts, and its readiness probe to port 5501 stays refused. `openshell-0` stays Running. OpenShell 0.1.8 needs a kernel with Landlock ABI v3. The Cloud Shell kernel is not that kernel.
 
 ## Delete the cluster
 
