@@ -98,7 +98,8 @@ if not found:
 rendered = "\n".join(lines) + "\n"
 if any(line.strip() == "__CLOUD_INIT__" for line in rendered.split("\n")):
     raise SystemExit("cloud-init placeholder survived rendering")
-Path(os.environ["OUT"]).write_text(rendered, encoding="utf-8", newline="\n")
+# write_bytes keeps LF on Python 3.9. Path.write_text(newline=) needs 3.10.
+Path(os.environ["OUT"]).write_bytes(rendered.encode("utf-8"))
 PY
   oc delete secret minikube-vm-cloudinit hello-openshell-minikube-cloudinit --ignore-not-found
   apply_path="${rendered}"
