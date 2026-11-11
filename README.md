@@ -243,7 +243,7 @@ openshell sandbox create \
   -- /usr/bin/python3.12 -c 'print("ok")'
 ```
 
-OpenShell 0.1.8 needs Landlock ABI v3 on the guest. If the agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
+OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
 Commands 6 and 7 do not use the VM. There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running them. Command 8 deletes `minikube-vm` and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
 

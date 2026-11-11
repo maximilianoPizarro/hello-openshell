@@ -79,7 +79,7 @@ openshell sandbox create \
   --from registry.access.redhat.com/hi/python:3.12 \
   --policy deploy/hi-python.policy.yaml \
   -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
-      <p>OpenShell 0.1.8 needs Landlock ABI v3 on the guest kernel. If the agent container exits, <code>openshell logs model-check</code> is the log to read.</p>
+      <p>OpenShell 0.1.8 needs Landlock ABI v3 on the guest kernel. On 11 Nov 2026 this command printed <code>ok</code> and the phase was <code>Completed</code>. If a later agent exits, <code>openshell logs model-check</code> is the log to read.</p>
     </article>
     <article class="step">
       <h2><span>5</span>Ask Granite</h2>

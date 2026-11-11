@@ -113,6 +113,7 @@ else
   fi
 fi
 
-openshell gateway add https://127.0.0.1:8080 --local --name minikube || true
+openshell gateway remove minikube >/dev/null 2>&1 || true
+openshell gateway add https://127.0.0.1:8080 --local --name minikube
 openshell gateway select minikube
 openshell status
