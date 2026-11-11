@@ -30,14 +30,14 @@
   </header>
   <main class="wrap">
     <section class="hero">
-      <p class="kicker">OpenShift Dev Spaces</p>
+      <p class="kicker">Experimental · OpenShift Dev Spaces</p>
       <h1>Developer Sandbox</h1>
       <p class="lede">Abrí el repo en un workspace. Al arrancar se instala el CLI de OpenShell 0.1.8 y el workspace sigue abriendo si ese paso falla. Ejecutá <strong>Install OpenShell CLI</strong> para ver el error. Este clúster no puede alojar el gateway.</p>
       <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Abrir en Developer Sandbox</a></p>
     </section>
     <figure>
-      <img src="../../assets/diagrams/sandbox-architecture.jpg" alt="Workspace de Dev Spaces, token de oc whoami y predictor Granite compartido">
-      <figcaption>La cuota de GPU del proyecto es 0. El predictor vive en <code>sandbox-shared-models</code>.</figcaption>
+      <img src="../../assets/diagrams/sandbox-architecture.jpg" alt="Workspace de Dev Spaces, token de oc whoami y predictor del modelo">
+      <figcaption>El proyecto de usuario suele no tener cuota de GPU. Apuntá las tareas Ask a un predictor que puedas resolver.</figcaption>
     </figure>
     <article class="step">
       <h2><span>1</span>Abrir el workspace</h2>
@@ -45,24 +45,24 @@
     </article>
     <article class="step">
       <h2><span>2</span>Project status</h2>
-      <p>Terminal → Run Task… → <strong>Project status</strong>. Corre <code>scripts/sandbox-status.sh</code> y muestra <code>oc whoami</code>, el proyecto y la cuota. Las <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuotas</a> también cuentan el pod del workspace. El nombre de la tarea queda en inglés porque es el texto del IDE.</p>
+      <p>Terminal → Run Task… → <strong>Project status</strong>. Corre <code>scripts/sandbox-status.sh</code> y muestra <code>oc whoami</code>, el proyecto y la cuota. Las <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuotas</a> también cuentan el pod del workspace. Confirmá el CLI con <code>openshell --version</code> (no existe el subcomando <code>openshell version</code>). El nombre de la tarea queda en inglés porque es el texto del IDE.</p>
     </article>
     <article class="step">
       <h2><span>3</span>Ask Granite</h2>
-      <p>La tarea <strong>Ask Granite</strong> corre <code>scripts/sandbox-ask.sh curl</code>. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. La URL base por defecto es:</p>
-      <pre><code>https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1</code></pre>
-      <p>El script lista <code>/v1/models</code> y manda un chat completion. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>. Esta tarea no se ejecutó en la máquina donde se probó el camino local.</p>
+      <p>La tarea <strong>Ask Granite</strong> corre <code>scripts/sandbox-ask.sh curl</code>. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. No hay un hostname fijo de modelo compartido. Definí la URL base primero:</p>
+      <pre><code>export SANDBOX_MODEL_BASE=https://&lt;predictor&gt;.&lt;namespace&gt;.svc.cluster.local:8443/v1</code></pre>
+      <p>El script lista <code>/v1/models</code> y manda un chat completion. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
     </article>
     <article class="step">
       <h2><span>4</span>Ask with ask.py</h2>
-      <p>La tarea <strong>Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. El prompt del script es una frase en español.</p>
+      <p>La tarea <strong>Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. También necesita <code>SANDBOX_MODEL_BASE</code>. El prompt del script es una frase en español.</p>
     </article>
     <article class="step">
       <h2><span>5</span>Clean</h2>
-      <p>La tarea <strong>Clean</strong> borra objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra el modelo compartido ni el workspace.</p>
+      <p>La tarea <strong>Clean</strong> borra objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
     </article>
     <section class="note warn">
-      <p><strong>Gateway.</strong> El 11 de noviembre de 2026 este sandbox (OpenShift 4.22.22, proyecto <code>maximilianopizarro5-dev</code>) no podía crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no estaba servida. El chart 0.1.8 se detiene ahí, así que el gateway no se instaló. <code>openshell version</code> funciona. <code>openshell status</code> necesita un gateway. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>. La cuota de GPU del proyecto es 0, y <code>oc get inferenceservice -n sandbox-shared-models</code> no devolvió objetos.</p>
+      <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida. El chart 0.1.8 se detiene ahí, así que el gateway no se instala. <code>openshell --version</code> funciona después de instalar el CLI. <code>openshell status</code> necesita un gateway. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>
     </section>
   </main>
   <footer>

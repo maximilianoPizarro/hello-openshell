@@ -31,9 +31,9 @@ case ":${PATH:-}:" in
     ;;
 esac
 
-if "${DEST}/openshell" version 2>/dev/null | grep -q "${ASSET_VERSION}"; then
+if "${DEST}/openshell" --version 2>/dev/null | grep -q "${ASSET_VERSION}"; then
   echo "openshell ${ASSET_VERSION} is already in ${DEST}"
-  "${DEST}/openshell" version
+  "${DEST}/openshell" --version
   exit 0
 fi
 
@@ -45,4 +45,4 @@ curl -fL --retry 3 --retry-delay 2 "$url" -o "${tmpdir}/openshell.tgz"
 tar -xzf "${tmpdir}/openshell.tgz" -C "$tmpdir"
 install_bin "${tmpdir}/openshell"
 echo "Installed ${DEST}/openshell"
-"${DEST}/openshell" version
+"${DEST}/openshell" --version

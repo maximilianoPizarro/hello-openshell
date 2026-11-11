@@ -30,14 +30,14 @@
   </header>
   <main class="wrap">
     <section class="hero">
-      <p class="kicker">Tested 11 November 2026</p>
+      <p class="kicker">Linux · macOS · Windows</p>
       <h1>OpenShell on your machine</h1>
       <p class="lede">A Podman sandbox calls Ollama <code>llama3.2:1b</code> through <code>host.openshell.internal:11434</code>. The gateway is OpenShell 0.1.8. The same client is <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/examples/ask.py">examples/ask.py</a>.</p>
     </section>
     <div class="cards">
-      <a class="card" href="index.html"><h2>Local</h2><p>Podman, 3 GiB cap, verified on Windows 11.</p></a>
-      <a class="card" href="sandbox/index.html"><h2>Developer Sandbox</h2><p>Dev Spaces tasks against the shared Granite model.</p></a>
-      <a class="card" href="openshift/index.html"><h2>OpenShift AI</h2><p>Admin cluster, one GPU, token stays in the gateway.</p></a>
+      <a class="card" href="index.html"><h2>Local</h2><p>Podman on Linux, macOS, or Windows. 3 GiB cap.</p></a>
+      <a class="card" href="sandbox/index.html"><h2>Developer Sandbox</h2><p>Dev Spaces CLI. Experimental; set your own model URL.</p></a>
+      <a class="card" href="openshift/index.html"><h2>OpenShift AI</h2><p>Admin cluster reference. One GPU, token stays in the gateway.</p></a>
     </div>
 
     <figure>
@@ -45,46 +45,38 @@
       <figcaption>The sandbox has no network of its own. The supervisor dials Ollama.</figcaption>
     </figure>
 
-    <article class="step" id="start">
-      <h2><span>0</span>Before you start</h2>
-      <p>Podman 6.1.4 on this machine. The machine must be up, and cgroup v2.</p>
-      <pre><code>podman machine start
-podman version
-podman info --format '{{json .Host}}' | findstr cgroupVersion</code></pre>
+    <article class="step" id="quickstart">
+      <h2><span>0</span>Quickstart</h2>
+      <pre><code>git clone https://github.com/maximilianoPizarro/hello-openshell
+cd hello-openshell
+make up
+make gateway
+make ask
+make down</code></pre>
+      <p><code>make up</code> starts Ollama and pulls the model. <code>make gateway</code> installs OpenShell 0.1.8. <code>make ask</code> runs <code>examples/ask.py</code> in the hardened Python sandbox.</p>
     </article>
 
-    <article class="step" id="ollama">
-      <h2><span>1</span>Start Ollama</h2>
-      <p>One container, 3 GiB and 2 CPUs. From the repository root.</p>
-      <pre><code>podman compose -f deploy/compose.yaml up -d</code></pre>
-      <p>From Windows Git Bash, the published port is the machine IPv4, not <code>127.0.0.1</code>.</p>
-      <pre><code>OLLAMA_IP=$(MSYS_NO_PATHCONV=1 podman machine ssh "ip -4 -o addr show eth0" | awk '{print $4}' | cut -d/ -f1 | head -1)
-until curl -fsS "http://${OLLAMA_IP}:11434/api/tags" >/dev/null; do sleep 2; done
-podman exec ollama ollama pull llama3.2:1b
-curl -sS "http://${OLLAMA_IP}:11434/v1/models" -H 'Authorization: Bearer fake'</code></pre>
+    <article class="step" id="platforms">
+      <h2><span>1</span>Platforms</h2>
+      <table>
+        <thead>
+          <tr><th>Platform</th><th>Podman</th><th>Host URL for Ollama</th><th>Gateway</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Linux</td><td>Native</td><td><code>http://127.0.0.1:11434</code></td><td>On the host</td></tr>
+          <tr><td>macOS</td><td><code>podman machine</code></td><td>Published port on localhost</td><td>Inside the machine</td></tr>
+          <tr><td>Windows</td><td><code>podman machine</code> on WSL2</td><td>localhost with mirrored networking, or machine IPv4 with NAT</td><td>Inside the machine</td></tr>
+        </tbody>
+      </table>
+      <p><code>scripts/ollama-url.sh</code> prints the host URL. The sandbox always uses <code>host.openshell.internal:11434</code>. On Windows, <code>networkingMode=mirrored</code> in <code>%USERPROFILE%\.wslconfig</code> makes localhost work from the host.</p>
       <figure>
-        <img src="assets/diagrams/local-windows-net.jpg" alt="Windows uses the machine IP, the machine uses 127.0.0.1, the sandbox uses a hostname">
+        <img src="assets/diagrams/local-windows-net.jpg" alt="Host, machine, and sandbox reach Ollama on different addresses">
         <figcaption>Inside the machine, <code>127.0.0.1:11434</code> answers. The sandbox name is <code>host.openshell.internal</code>.</figcaption>
       </figure>
     </article>
 
-    <article class="step" id="install">
-      <h2><span>2</span>Install OpenShell inside the machine</h2>
-      <p><code>podman machine ssh</code> is root here. Install 0.1.8, then pin the rootful socket.</p>
-      <pre><code>curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.1.8/install.sh | \
-  OPENSHELL_VERSION=v0.1.8 sh</code></pre>
-      <p>Under <code>[openshell.drivers.podman]</code> in <code>~/.config/openshell/gateway.toml</code>:</p>
-      <pre><code>socket_path = "/run/podman/podman.sock"</code></pre>
-      <pre><code>openshell-gateway config preflight --path ~/.config/openshell/gateway.toml
-systemctl --user restart openshell-gateway
-openshell gateway add https://127.0.0.1:17670 --local --name openshell
-openshell gateway select openshell
-openshell status</code></pre>
-      <p>Expected: Connected, version 0.1.8.</p>
-    </article>
-
     <article class="step" id="profile">
-      <h2><span>3</span>Import the Ollama profile</h2>
+      <h2><span>2</span>Import the Ollama profile</h2>
       <pre><code>openshell profile lint -f deploy/ollama.profile.yaml
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
@@ -92,7 +84,7 @@ openshell provider get ollama</code></pre>
     </article>
 
     <article class="step" id="check">
-      <h2><span>4</span>List models from a sandbox</h2>
+      <h2><span>3</span>List models from a sandbox</h2>
       <pre><code>openshell sandbox create \
   --name model-check \
   --from registry.access.redhat.com/hi/python:3.12 \
@@ -103,7 +95,7 @@ openshell provider get ollama</code></pre>
     </article>
 
     <article class="step" id="agent">
-      <h2><span>5</span>Ask with ask.py</h2>
+      <h2><span>4</span>Ask with ask.py</h2>
       <figure>
         <img src="assets/diagrams/local-flow.jpg" alt="ask.py POST, policy ALLOW, supervisor dial, model reply">
         <figcaption>The policy allows the POST. The value <code>fake</code> is visible to the process. It is not a real key.</figcaption>
@@ -118,20 +110,16 @@ openshell sandbox create \
   --env "MODEL_NAME=${MODEL_NAME}" \
   --env OPENAI_API_KEY=fake \
   -- /usr/bin/python3.12 -c "$(cat examples/ask.py)"</code></pre>
-      <p>On this machine the model returned a sentence and the log said <code>HTTP:POST ALLOWED</code>.</p>
     </article>
 
     <article class="step" id="down">
-      <h2><span>6</span>Tear down</h2>
-      <pre><code>openshell sandbox delete hello-agent model-check
-openshell provider delete ollama
-openshell profile delete ollama
-podman compose -f deploy/compose.yaml down -v</code></pre>
-      <p>That volume is named <code>deploy_ollama</code>.</p>
+      <h2><span>5</span>Tear down</h2>
+      <pre><code>make down</code></pre>
+      <p>Or: delete the sandboxes, then <code>podman compose -f deploy/compose.yaml down -v</code>. That volume is named <code>deploy_ollama</code>.</p>
     </article>
 
     <section class="note">
-      <p>Full command notes and the failure table are in the <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/README.md">English README</a>. Official docs: <a href="https://docs.nvidia.com/openshell/latest/about/installation">installation</a>, <a href="https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes">runtimes</a>, <a href="https://docs.nvidia.com/openshell/how-it-works/inference">inference</a>, <a href="https://github.com/ollama/ollama/blob/main/docs/openai.md">Ollama OpenAI API</a>.</p>
+      <p>Full command notes and the failure table are in the <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/README.md">English README</a>. Stack used while writing: <a href="tested-environments.md">tested-environments.md</a>. Official docs: <a href="https://docs.nvidia.com/openshell/latest/about/installation">installation</a>, <a href="https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes">runtimes</a>, <a href="https://docs.nvidia.com/openshell/how-it-works/inference">inference</a>, <a href="https://github.com/ollama/ollama/blob/main/docs/openai.md">Ollama OpenAI API</a>.</p>
     </section>
   </main>
   <footer>

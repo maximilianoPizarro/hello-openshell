@@ -1,0 +1,21 @@
+# Environments this guide was written against
+
+This appendix records the stack used while writing the local path. It is not a requirement list. Other Podman versions and hosts work when they provide cgroup v2 and a reachable Ollama API.
+
+| Piece | Value used while writing |
+| --- | --- |
+| OpenShell | 0.1.8 |
+| Compute driver | `podman` |
+| cgroup | v2 |
+| Ollama | container image `docker.io/ollama/ollama:latest`, model `llama3.2:1b`, 3 GiB / 2 CPUs |
+| Sandbox image | `registry.access.redhat.com/hi/python:3.12` (`/usr/bin/python3.12`) |
+| Sandbox policy | [deploy/hi-python.policy.yaml](../deploy/hi-python.policy.yaml) (UID/GID `65532`) |
+| Host reachability | `127.0.0.1:11434` when available; otherwise the Podman machine global IPv4 |
+| Sandbox reachability | `host.openshell.internal:11434` |
+
+Platform notes that affected the scripts:
+
+- On hosts with a Podman machine (macOS, Windows), the gateway installer runs inside the machine.
+- On Windows with default WSL NAT, published ports may not answer on `127.0.0.1` from the Windows side. Mirrored networking or the machine IPv4 both work; `scripts/ollama-url.sh` picks whichever answers first.
+
+The Developer Sandbox and OpenShift AI tracks are documented as experimental or admin reference. They were not treated as a verified end-to-end path in the same way as the local Podman flow.

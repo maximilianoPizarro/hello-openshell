@@ -59,7 +59,7 @@ The last command must list an NVIDIA hardware profile. [deploy/granite-2b-values
 
 If `GPU` is empty, the GPU Operator has not published `nvidia.com/gpu` yet. Stop there. vLLM will not start the model.
 
-A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. On 11 November 2026 the project `maximilianopizarro5-dev` on OpenShift 4.22.22 could not create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` was not served, and the project GPU quota was 0. The Helm chart stops in that case. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI only.
+A [Developer Sandbox](https://developers.redhat.com/developer-sandbox) project is not this module. That project cannot create CRDs, namespaces, or ClusterRoles, `agents.x-k8s.io` is not served, and the GPU quota is 0. The Helm chart stops in that case. The [Dev Spaces workspace](sandbox/index.html) installs the OpenShell CLI only.
 
 ## 1. Serve the small model
 
@@ -195,7 +195,7 @@ On WSL, Linux, or macOS:
 curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.1.8/install.sh | \
   OPENSHELL_VERSION=v0.1.8 sh
 
-openshell version
+openshell --version
 ```
 
 The installer also starts a local gateway on your machine. The one you want is the cluster gateway. Leave the port-forward running in one terminal:

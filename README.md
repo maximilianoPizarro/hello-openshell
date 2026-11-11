@@ -10,126 +10,133 @@
 
 # OpenShell with a small model
 
-This repository walks the same client, [examples/ask.py](examples/ask.py), through three places:
+[examples/ask.py](examples/ask.py) is the same client on three tracks:
 
 | Track | Where it runs | What serves the model |
 | --- | --- | --- |
-| Local | Podman on your machine | Ollama `llama3.2:1b`, 3 GiB cap |
-| Developer Sandbox | OpenShift Dev Spaces | Shared Granite already on the sandbox |
+| Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
+| Developer Sandbox | OpenShift Dev Spaces | An OpenAI-compatible predictor you can reach from the workspace |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
 
-The local track was run on this machine on 11 November 2026. The step-by-step site is in [docs/](docs/index.html) (English and Spanish). The cluster write-up is [docs/openshift-ai.md](docs/openshift-ai.md).
+The step-by-step site is in [docs/](docs/index.html) (English and Spanish). The cluster write-up is [docs/openshift-ai.md](docs/openshift-ai.md). What this guide was written against is in [docs/tested-environments.md](docs/tested-environments.md).
 
 ![Local architecture](docs/assets/diagrams/local-architecture.jpg)
 
-## Tested on this machine
+## Quickstart
 
-Windows 11, Podman 6.1.4, machine `podman-machine-default`:
+From the repository root, with [Podman](https://podman.io/) installed and bash available (native shell, or Git Bash on Windows):
 
-- Fedora 44 on WSL2, kernel `6.18.58.1-microsoft-standard-WSL2`, cgroup v2, about 15 GiB RAM. Start it with `podman machine start`. `podman machine set --memory` does not apply to WSL machines; RAM is set in `%USERPROFILE%\.wslconfig`.
-- The default connection is rootful, `podman-machine-default-root`, socket `/run/podman/podman.sock`.
-- `podman compose` delegates to Docker Compose 5.3.1.
-- The `openshell` CLI is not on the Windows PATH. The gateway runs inside the machine. `podman machine ssh` logs in as root, and the user unit came up on that session.
-- Ollama 0.40.16 listens on port `11434` inside the machine. With WSL NAT (`networkingMode=nat`), Windows reaches it on the machine `eth0` IPv4. In this run that address was `172.21.235.119`. Inside the machine, `127.0.0.1:11434` answers.
-- `llama3.2:1b` (about 1.3 GB) answered `Hola.` With the model loaded, `podman stats` showed 3.19 GiB of 3.22 GiB.
-- OpenShell RPMs `0.1.8-1.fc44` (`openshell`, `openshell-gateway`, `openshell-prover`). `openshell status` connected to `https://127.0.0.1:17670`. `socket_path = "/run/podman/podman.sock"` was added under `[openshell.drivers.podman]`.
-- Sandbox `model-check` on `registry.access.redhat.com/hi/python:3.12` listed `llama3.2:1b` through `host.openshell.internal:11434`. `ask.py` in that image returned a Spanish sentence. Python in the image is `/usr/bin/python3.12` (3.12.16). The policy [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) sets UID and GID `65532`.
+```bash
+git clone https://github.com/maximilianoPizarro/hello-openshell
+cd hello-openshell
+make up
+make gateway
+make ask
+make down
+```
 
-The Llama Stack starter image (`docker.io/ogxai/distribution-starter`, about 3.4 GB compressed) is not part of this path. `docker.io/ogx/distribution-starter` is denied by the registry, and the real image saturated this machine.
-
-## Versions
-
-| Piece | Version |
+| Target | What it does |
 | --- | --- |
-| OpenShell CLI and gateway | 0.1.8 |
-| Driver | `podman` |
-| Podman on Windows | 6.1.4, Fedora 44 machine |
-| Ollama | `docker.io/ollama/ollama:latest` (this run: 0.40.16), 3 GiB and 2 CPUs |
-| Model | `llama3.2:1b` |
-| API inside the machine | `http://127.0.0.1:11434/v1` |
-| API from Windows | `http://<eth0-ipv4>:11434/v1` |
-| Sandbox image | `registry.access.redhat.com/hi/python:3.12` |
+| `make up` | Starts Ollama from [deploy/compose.yaml](deploy/compose.yaml) and pulls `llama3.2:1b` |
+| `make gateway` | Installs OpenShell 0.1.8 against the Podman socket that sees the `ollama` container |
+| `make ask` | Creates a sandbox with the hardened Python image and runs `examples/ask.py` |
+| `make down` | Deletes `hello-agent` / `model-check` and stops Ollama with its volume |
 
-## Before you start
+`scripts/ollama-url.sh` prints the host URL for Ollama (no `/v1` suffix). Use that URL from the host. The sandbox always uses `host.openshell.internal:11434`.
 
-```bash
-podman machine start
-podman version
-podman info --format '{{json .Host}}' | findstr cgroupVersion
-```
+## Platforms
 
-Inside the machine, `cgroupVersion` must be `v2`.
+| Platform | Where Podman runs | Host URL for Ollama | Where the gateway runs |
+| --- | --- | --- | --- |
+| Linux | Native (rootless or rootful) | `http://127.0.0.1:11434` | On the host |
+| macOS | `podman machine` | Published port on localhost | Inside the machine |
+| Windows | `podman machine` on WSL2 | localhost with mirrored networking, or the machine IPv4 with NAT | Inside the machine |
 
-## 1. Start Ollama
+Shared rules:
 
-From the repository root:
+- The sandbox has no network of its own. The supervisor dials Ollama as `host.openshell.internal:11434`. Loopback from inside the sandbox is blocked.
+- The gateway and `podman ps` must see the same `ollama` container. Pin `socket_path` under `[openshell.drivers.podman]` in `~/.config/openshell/gateway.toml` to that daemon.
+- cgroup v2 is required for OpenShell 0.1.8 sandboxes.
 
-```bash
-podman compose -f deploy/compose.yaml up -d
-```
+### Linux
 
-The same container by hand:
+Install Podman on the host. Start the API socket if your distribution needs it (`systemctl --user enable --now podman.socket` for rootless). `make up` and `make gateway` run on the host. Rootless sockets are usually `/run/user/$(id -u)/podman/podman.sock`. Rootful is `/run/podman/podman.sock`.
 
-```bash
-podman volume create ollama
-podman run -d --name ollama --replace \
-  -p 11434:11434 \
-  --memory 3g --cpus 2 \
-  -e OLLAMA_MAX_LOADED_MODELS=1 \
-  -e OLLAMA_NUM_PARALLEL=1 \
-  -e OLLAMA_KEEP_ALIVE=5m \
-  -v ollama:/root/.ollama \
-  docker.io/ollama/ollama:latest
-```
+### macOS
 
-Pull the 1B model once (about 1.3 GB). From Windows Git Bash the API is on the machine IPv4. `MSYS_NO_PATHCONV=1` stops Git from rewriting the `ssh` path:
+Create and start a machine (`podman machine init` once, then `podman machine start`). The published port `11434` answers on localhost. There is no Windows-style binary for OpenShell on the Mac host for this guide: `make gateway` installs inside `podman machine ssh`, which is the Linux guest.
 
-```bash
-OLLAMA_IP=$(MSYS_NO_PATHCONV=1 podman machine ssh "ip -4 -o addr show eth0" | awk '{print $4}' | cut -d/ -f1 | head -1)
-echo "$OLLAMA_IP"
+### Windows
 
-until curl -fsS "http://${OLLAMA_IP}:11434/api/tags" >/dev/null; do
-  sleep 2
-done
+Install [Podman Desktop](https://podman-desktop.io/) or the Podman CLI so a WSL2 machine exists. There is no native Windows OpenShell binary; the CLI and gateway run inside the machine.
 
-podman exec ollama ollama pull llama3.2:1b
+Two ways to reach Ollama from Windows:
 
-curl -sS "http://${OLLAMA_IP}:11434/v1/models" \
-  -H 'Authorization: Bearer fake'
-```
+1. **Mirrored networking (simpler).** In `%USERPROFILE%\.wslconfig`:
 
-Inside the machine the same check uses `http://127.0.0.1:11434`. An OpenShell sandbox uses `host.openshell.internal:11434`. OpenShell blocks loopback. The model id must be `llama3.2:1b`.
+   ```ini
+   [wsl2]
+   networkingMode=mirrored
+   ```
+
+   Restart WSL (`wsl --shutdown`), start the machine again, then `http://127.0.0.1:11434` works from Windows and from Git Bash. `scripts/ollama-url.sh` prefers that address when it answers.
+
+2. **NAT (default).** Windows does not forward the published port to `127.0.0.1`. Use the URL from `make ollama-url` (the machine global IPv4).
+
+Git Bash rewrites Unix paths in some `podman machine ssh` arguments. The scripts set `MSYS_NO_PATHCONV=1` when they need a Unix path. Memory for a WSL machine is set in `.wslconfig`, not with `podman machine set --memory`.
 
 ![Where port 11434 is reachable](docs/assets/diagrams/local-windows-net.jpg)
 
-Windows uses the machine IPv4. Inside the machine, `127.0.0.1:11434`. The sandbox uses the name `host.openshell.internal`.
+## Versions this guide uses
+
+| Piece | Value |
+| --- | --- |
+| OpenShell CLI and gateway | 0.1.8 |
+| Driver | `podman` |
+| Ollama image | `docker.io/ollama/ollama:latest` (3 GiB, 2 CPUs) |
+| Model | `llama3.2:1b` |
+| Sandbox image | `registry.access.redhat.com/hi/python:3.12` |
+| Sandbox policy | [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) |
+| Host API | from `scripts/ollama-url.sh` |
+| Sandbox API | `http://host.openshell.internal:11434/v1` |
+
+## Step by step
+
+### 1. Start Ollama
 
 ```bash
-podman stats --no-stream ollama
+podman compose -f deploy/compose.yaml up -d
+OLLAMA_URL="$(bash scripts/ollama-url.sh)"
+until curl -fsS "${OLLAMA_URL}/api/tags" >/dev/null; do sleep 2; done
+podman exec ollama ollama pull llama3.2:1b
+curl -sS "${OLLAMA_URL}/v1/models" -H 'Authorization: Bearer fake'
 ```
 
-## 2. Install OpenShell with the Podman driver
+### 2. Install OpenShell
 
-On Windows, install inside the machine:
+`make gateway` wraps this. Manual path:
 
-```bash
-podman machine ssh
-```
-
-That shell is root on this machine. Containers created by the Windows `podman` client are on `/run/podman/podman.sock`. A user socket also exists at `/run/user/1000/podman/podman.sock` and does not see those containers.
+**Linux (on the host):**
 
 ```bash
 curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.1.8/install.sh | \
   OPENSHELL_VERSION=v0.1.8 sh
 ```
 
-The Fedora installer listens on `https://127.0.0.1:17670` and already sets `compute_driver = "podman"`. Add the socket the Windows client uses, under `[openshell.drivers.podman]` in `~/.config/openshell/gateway.toml`:
+**macOS and Windows (inside the machine):**
+
+```bash
+podman machine ssh
+# then the same curl | sh installer
+```
+
+Under `[openshell.drivers.podman]` in `~/.config/openshell/gateway.toml`, set the socket that lists the `ollama` container:
 
 ```toml
 socket_path = "/run/podman/podman.sock"
 ```
 
-Check it and restart:
+On Linux rootless, use `/run/user/$(id -u)/podman/podman.sock` instead.
 
 ```bash
 openshell-gateway config preflight --path ~/.config/openshell/gateway.toml
@@ -137,15 +144,12 @@ systemctl --user restart openshell-gateway
 openshell gateway add https://127.0.0.1:17670 --local --name openshell
 openshell gateway select openshell
 openshell status
+openshell --version
 ```
 
-`openshell status` should say Connected, version 0.1.8. If the user service is missing, `systemctl status openshell-gateway` and `journalctl -u openshell-gateway -f` show whether the system bus has the unit instead.
-
-## 3. Import the profile
+### 3. Import the profile
 
 [deploy/ollama.profile.yaml](deploy/ollama.profile.yaml) allows only `host.openshell.internal:11434`. It stores no key. Ollama accepts `fake`, and that string opens no other host.
-
-From the repository root inside the machine (this machine mounts the Windows tree at `/mnt/c/Users/Max/hello-openshell`):
 
 ```bash
 openshell profile lint -f deploy/ollama.profile.yaml
@@ -154,9 +158,9 @@ openshell provider create --name ollama --type ollama
 openshell provider get ollama
 ```
 
-## 4. First sandbox
+### 4. First sandbox
 
-The sandbox image is the [Red Hat Hardened Image for Python 3.12](https://catalog.redhat.com/en/software/containers/hi/python/69c576bbbea7c4011384c57a), `registry.access.redhat.com/hi/python:3.12`. The interpreter is `/usr/bin/python3.12`. That image runs as UID `65532`, and the account's primary group in `/etc/passwd` is `0`. OpenShell rejects group `0`, so [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) sets `run_as_user` and `run_as_group` to `65532`.
+The sandbox image is the [Red Hat Hardened Image for Python 3.12](https://catalog.redhat.com/en/software/containers/hi/python/69c576bbbea7c4011384c57a). The interpreter is `/usr/bin/python3.12`. That image runs as UID `65532`, and the account's primary group in `/etc/passwd` is `0`. OpenShell rejects group `0`, so [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) sets `run_as_user` and `run_as_group` to `65532`.
 
 ```bash
 export MODEL_NAME=llama3.2:1b
@@ -169,9 +173,9 @@ openshell sandbox create \
   -- /usr/bin/python3.12 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'
 ```
 
-The body is the same JSON the host returned. A log line `resolves to always-blocked address` means the URL used `127.0.0.1` or `localhost`.
+A log line `resolves to always-blocked address` means the URL used `127.0.0.1` or `localhost`.
 
-## 5. An agent that calls the model
+### 5. Ask with ask.py
 
 [examples/ask.py](examples/ask.py) reads `OPENAI_BASE_URL` and `MODEL_NAME`. It sends `Authorization: Bearer` with `RHOAI_API_TOKEN`, then `OPENAI_API_KEY`, then the literal `fake`.
 
@@ -187,7 +191,7 @@ openshell sandbox create \
   -- /usr/bin/python3.12 -c "$(cat examples/ask.py)"
 ```
 
-`$(cat examples/ask.py)` expands in the shell at the repository root. OpenShell warns that `OPENAI_API_KEY` is visible to the process. Here the value is `fake`. On this machine the sandbox printed a sentence from the model and the policy log stayed on `ALLOWED`.
+`$(cat examples/ask.py)` expands in the shell at the repository root. OpenShell warns that `OPENAI_API_KEY` is visible to the process. Here the value is `fake`. For a real credential, create a provider and attach it with `--provider` instead of `--env`.
 
 ![ask.py call](docs/assets/diagrams/local-flow.jpg)
 
@@ -197,79 +201,77 @@ openshell logs hello-agent
 podman stats --no-stream ollama
 ```
 
-## Developer Sandbox
+## Developer Sandbox (experimental)
 
-Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary, into `~/.local/bin`). A failed install no longer stops the workspace. Other tasks wait until you choose them (**Terminal → Run Task…**).
+Open this repository in [OpenShift Dev Spaces](https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide) on the [Developer Sandbox](https://developers.redhat.com/developer-sandbox) with the button at the top, or paste the repository URL into **Create Workspace**. [devfile.yaml](devfile.yaml) installs the OpenShell 0.1.8 CLI when the workspace starts (`scripts/install-openshell-cli.sh`, the static musl binary, into `~/.local/bin`). A failed install does not stop the workspace. Other tasks wait until you choose them (**Terminal → Run Task…**).
 
-Checked on 11 November 2026 against `https://api.rm2.thpm.p1.openshiftapps.com:6443` as `maximilianopizarro5`, project `maximilianopizarro5-dev`, OpenShift 4.22.22:
-
-- The user cannot create CRDs, namespaces, or ClusterRoles.
-- `agents.x-k8s.io` is not served, so the Helm chart 0.1.8 preflight refuses to install the gateway.
-- GPU quota for the project is 0.
-- `oc get inferenceservice -n sandbox-shared-models` returned no objects.
-
-The gateway was not installed. `openshell version` works after the CLI install. `openshell status` needs a gateway, which this project cannot host.
+This track does not install the gateway. A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and `agents.x-k8s.io` is not served, so Helm chart 0.1.8 stops. GPU quota for the user project is typically 0. After the CLI install, check with `openshell --version`. `openshell status` needs a gateway.
 
 | Task | What it runs |
 | --- | --- |
 | Install OpenShell CLI | `scripts/install-openshell-cli.sh` (also on workspace start) |
-| OpenShell version | the same install, then `openshell version` |
+| OpenShell version | the same install, then `openshell --version` |
 | Project status | `scripts/sandbox-status.sh` |
-| Ask Granite | `scripts/sandbox-ask.sh curl` |
-| Ask with ask.py | `scripts/sandbox-ask.sh python` |
+| Ask Granite | `scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
+| Ask with ask.py | `scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
 | Clean | deletes objects labeled `app.kubernetes.io/part-of=hello-openshell` |
 
-Details, in both languages: [docs/sandbox/index.html](docs/sandbox/index.html).
+There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running the Ask tasks.
 
-## OpenShift AI
+Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 
-The admin path (OpenShift 4.19+, Agent Sandbox v1.0.10, Helm chart 0.1.8, vLLM chart 0.7.1, Granite 3.3 2B) is [docs/openshift-ai.md](docs/openshift-ai.md), with [deploy/granite-2b-values.yaml](deploy/granite-2b-values.yaml) and [deploy/rhoai-granite.profile.yaml](deploy/rhoai-granite.profile.yaml). It was not applied from this machine.
+## OpenShift AI (admin reference)
+
+The admin path (OpenShift 4.19+, Agent Sandbox v1.0.10, Helm chart 0.1.8, vLLM chart 0.7.1, Granite 3.3 2B) is [docs/openshift-ai.md](docs/openshift-ai.md), with [deploy/granite-2b-values.yaml](deploy/granite-2b-values.yaml) and [deploy/rhoai-granite.profile.yaml](deploy/rhoai-granite.profile.yaml). Treat it as a reference until you apply it on a cluster you administer.
 
 ![OpenShift path](docs/assets/diagrams/openshift-architecture.jpg)
 
 ## When something fails
 
-| What you see | Where to look |
-| --- | --- |
-| `podman` cannot connect | `podman machine start`. On Windows the socket is absent while the machine is stopped. |
-| The Ollama container is killed for memory | `podman stats ollama`. Raise `mem_limit` in [deploy/compose.yaml](deploy/compose.yaml) to `4g` and recreate the container. Stay on `llama3.2:1b` when RAM is tight. |
-| `/v1/models` has no `llama3.2:1b` | `podman exec ollama ollama pull llama3.2:1b` is still running. `podman logs ollama`. |
-| `curl` to `127.0.0.1:11434` from Windows returns connection refused | Use `OLLAMA_IP` from step 1. Inside the machine, `127.0.0.1:11434` answers. |
-| The gateway creates no containers | `socket_path` must be the daemon `podman ps` uses from Windows. Here that is `/run/podman/podman.sock`. |
-| The sandbox exits and the log names Landlock or seccomp | The machine kernel refused the filter. OpenShell 0.1.8 does not start the sandbox without that check. |
-| `no matching policy` names a binary | On the hardened image the interpreter is `/usr/bin/python3.12`. Add that path, keep `resource_version`, and run `openshell profile update`. |
-| `configure an explicit workload group` | The image user `65532` has primary group `0`. Pass `--policy deploy/hi-python.policy.yaml`. |
-| `resolves to always-blocked address` | The sandbox URL uses loopback. Use `host.openshell.internal`. |
+| Category | What you see | Where to look |
+| --- | --- | --- |
+| Platform | `podman` cannot connect | `podman machine start` on macOS/Windows. On Linux, start the Podman socket. |
+| Memory | The Ollama container is killed | `podman stats ollama`. Raise `mem_limit` in [deploy/compose.yaml](deploy/compose.yaml) to `4g`. Stay on `llama3.2:1b` when RAM is tight. |
+| Model | `/v1/models` has no `llama3.2:1b` | `podman exec ollama ollama pull llama3.2:1b` is still running. `podman logs ollama`. |
+| Network (Windows NAT) | `curl` to `127.0.0.1:11434` from Windows returns connection refused | Use `make ollama-url`, or switch WSL to `networkingMode=mirrored`. |
+| Gateway | The gateway creates no containers | `socket_path` must be the daemon that lists `ollama`. |
+| Image | Sandbox exits naming Landlock or seccomp | The kernel refused the filter. OpenShell 0.1.8 needs that check. |
+| Policy | `no matching policy` names a binary | On the hardened image the interpreter is `/usr/bin/python3.12`. Update the profile and keep `resource_version`. |
+| Policy | `configure an explicit workload group` | The image user `65532` has primary group `0`. Pass `--policy deploy/hi-python.policy.yaml`. |
+| Policy | `resolves to always-blocked address` | The sandbox URL used loopback. Use `host.openshell.internal`. |
 
 To update a profile that is already imported:
 
 ```bash
 openshell profile export ollama -o yaml > /tmp/ollama.profile.yaml
+# edit binaries, keep resource_version
 openshell profile update ollama -f /tmp/ollama.profile.yaml
 ```
 
 ## Tear down
 
 ```bash
+make down
+```
+
+Or by hand:
+
+```bash
 openshell sandbox delete hello-agent model-check
 openshell provider delete ollama
 openshell profile delete ollama
-
 podman compose -f deploy/compose.yaml down -v
 ```
 
-`down -v` removes the compose volume. With this file the volume name is `deploy_ollama`. If you created the container by hand with the volume `ollama`:
-
-```bash
-podman rm -f ollama
-podman volume rm ollama
-```
-
-`podman machine stop` releases the WSL RAM when you are done.
+With this compose file the volume name is `deploy_ollama`. On Windows or macOS, `podman machine stop` releases the machine RAM when you are done.
 
 ## Pages
 
-The site in [docs/](docs/index.html) is plain HTML. [.github/workflows/gh-pages.yml](.github/workflows/gh-pages.yml) publishes that folder when the repository is pushed to `main` or `master`. This directory is not a git repository yet, so the workflow has not been run.
+The site in [docs/](docs/index.html) is plain HTML. [.github/workflows/gh-pages.yml](.github/workflows/gh-pages.yml) publishes that folder on push to `main` or `master`.
+
+## License
+
+This repository is licensed under the [Apache License 2.0](LICENSE).
 
 ## References
 
@@ -278,6 +280,7 @@ The site in [docs/](docs/index.html) is plain HTML. [.github/workflows/gh-pages.
 - [Ollama OpenAI API](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 - [Podman](https://podman.io/) and [podman machine](https://docs.podman.io/en/latest/markdown/podman-machine.1.html)
 - [Python](https://www.python.org/)
+- [Red Hat Hardened Images](https://catalog.redhat.com/en/software/containers/hi/python/69c576bbbea7c4011384c57a)
 - [OpenShift AI module](docs/openshift-ai.md)
 
 ## Trademarks

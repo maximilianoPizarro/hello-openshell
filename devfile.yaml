@@ -43,7 +43,7 @@ commands:
   - id: openshell-version
     exec:
       component: tools
-      commandLine: bash -lc 'bash scripts/install-openshell-cli.sh && openshell version && openshell status || true'
+      commandLine: bash -lc 'bash scripts/install-openshell-cli.sh && openshell --version; openshell status || true'
       workingDir: ${PROJECT_SOURCE}
       label: OpenShell version
       group:
