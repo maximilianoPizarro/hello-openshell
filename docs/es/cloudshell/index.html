@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenShell en minikube desde Cloud Shell</title>
+  <link rel="stylesheet" href="../../css/site.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="../index.html">
+        <span class="logos">
+          <img class="nvidia" src="../../assets/logos/nvidia-logo.svg" alt="NVIDIA">
+          <img src="../../assets/logos/podman-logo.png" alt="Podman">
+          <img src="../../assets/logos/python-logo.svg" alt="Python">
+        </span>
+        <strong>hello-openshell</strong>
+      </a>
+      <nav class="tracks" aria-label="Recorridos">
+        <a href="../index.html">Local</a>
+        <a href="../sandbox/index.html">Developer Sandbox</a>
+        <a href="../openshift/index.html">OpenShift</a>
+        <a href="index.html" aria-current="page">Cloud Shell</a>
+      </nav>
+      <nav class="lang" aria-label="Idioma">
+        <a href="../../cloudshell/index.html">EN</a>
+        <a href="index.html" aria-current="page">ES</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <p class="kicker">minikube · Cloud Shell</p>
+      <h1>OpenShell desde Cloud Shell</h1>
+      <p class="lede">Cloud Shell ya trae minikube. <code>minikube start --driver=docker</code> es el clúster. Corre en esa VM. No crea un clúster de GKE. No es Developer Sandbox.</p>
+      <p><a href="https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&amp;cloudshell_git_branch=main&amp;cloudshell_tutorial=docs/cloudshell-tutorial.md&amp;show=terminal"><img alt="Open in Cloud Shell" src="https://gstatic.com/cloudssh/images/open-btn.svg" height="36"></a></p>
+    </section>
+    <table>
+      <thead><tr><th>Pieza</th><th>Versión</th></tr></thead>
+      <tbody>
+        <tr><td>Clúster</td><td>minikube, driver docker</td></tr>
+        <tr><td>Agent Sandbox</td><td>v1.0.10 <code>sandbox.yaml</code></td></tr>
+        <tr><td>Chart de OpenShell</td><td>0.1.8</td></tr>
+        <tr><td>CLI</td><td>tarball musl 0.1.8</td></tr>
+        <tr><td>Imagen del sandbox</td><td><code>registry.access.redhat.com/hi/python:3.12</code></td></tr>
+      </tbody>
+    </table>
+    <article class="step">
+      <h2><span>1</span>Arrancar minikube</h2>
+      <p>Administrás este clúster, así que podés instalar el CRD de Agent Sandbox. No uses <code>deploy/openshift-scc-values.yaml</code>. Ese archivo es para la SCC <code>restricted-v2</code> de OpenShift.</p>
+      <pre><code>minikube start --driver=docker</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>2</span>Agent Sandbox y el gateway</h2>
+      <p>El chart no instala el CRD. Si falta <code>helm</code>, instalá Helm 3 antes.</p>
+      <pre><code>kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
+kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
+helm upgrade --install openshell \
+  oci://ghcr.io/nvidia/openshell/helm-chart \
+  --version 0.1.8 \
+  --namespace openshell \
+  --create-namespace
+kubectl -n openshell rollout status statefulset/openshell --timeout=300s</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>3</span>CLI y mTLS</h2>
+      <p>Cloud Shell es Debian. Usá el binario musl, no el instalador de Fedora. Dejá el port-forward en otra terminal. Copiá <code>openshell-client-tls</code> como en el <a href="../openshift/index.html">módulo de OpenShift</a>, con <code>kubectl</code> en lugar de <code>oc</code>.</p>
+      <pre><code>mkdir -p "${HOME}/.local/bin"
+curl -fL https://github.com/NVIDIA/OpenShell/releases/download/v0.1.8/openshell-x86_64-unknown-linux-musl.tar.gz \
+  | tar -xz -C "${HOME}/.local/bin"
+export PATH="${HOME}/.local/bin:${PATH}"
+openshell --version
+kubectl -n openshell port-forward svc/openshell 8080:8080</code></pre>
+      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name minikube
+openshell gateway select minikube
+openshell status</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>4</span>Prueba</h2>
+      <p>Un sandbox que solo imprime confirma el gateway. El kernel del nodo tiene que permitir Landlock. Con el driver docker, ese kernel es el de la VM de Cloud Shell. Si el log nombra Landlock o seccomp, esa VM no puede correr un sandbox de OpenShell 0.1.8. La policy fija usuario y grupo <code>65532</code> para la imagen hardened.</p>
+      <pre><code>openshell sandbox create \
+  --name model-check \
+  --from registry.access.redhat.com/hi/python:3.12 \
+  --policy deploy/hi-python.policy.yaml \
+  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
+    </article>
+    <article class="step">
+      <h2><span>5</span>Borrar el clúster</h2>
+      <pre><code>minikube delete</code></pre>
+      <p>El archivo que abre el botón es <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/docs/cloudshell-tutorial.md">docs/cloudshell-tutorial.md</a>.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="wrap">
+      <p>Guía independiente. El wordmark de NVIDIA nombra a OpenShell y no implica respaldo. Las marcas de Podman y Python están en la <a href="../index.html">página local</a>.</p>
+    </div>
+  </footer>
+</body>
+</html>

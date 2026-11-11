@@ -1,8 +1,8 @@
 [![Open in Developer Sandbox](https://img.shields.io/static/v1?label=Open%20in&message=Developer%20Sandbox&logo=eclipseche&color=FDB940&labelColor=525C86)](https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral)
-[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md)
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md&show=terminal)
 
 <p>
-  <a href="https://docs.nvidia.com/openshell/">NVIDIA OpenShell</a>
+  <a href="https://docs.nvidia.com/openshell/"><img src="docs/assets/logos/nvidia-logo.svg" alt="NVIDIA" height="22"></a>
   &nbsp;
   <a href="https://podman.io/"><img src="docs/assets/logos/podman-logo.png" alt="Podman" height="28"></a>
   &nbsp;
@@ -18,7 +18,7 @@
 | Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
 | Developer Sandbox | OpenShift Dev Spaces | An OpenAI-compatible predictor you can reach from the workspace |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
-| Cloud Shell | A GKE Standard cluster you create | Whatever OpenAI-compatible endpoint the sandbox can reach |
+| Cloud Shell | minikube inside Cloud Shell | Whatever OpenAI-compatible endpoint the sandbox can reach |
 
 The step-by-step site is in [docs/](docs/index.html) (English and Spanish). The cluster write-up is [docs/openshift-ai.md](docs/openshift-ai.md). What this guide was written against is in [docs/tested-environments.md](docs/tested-environments.md).
 
@@ -224,21 +224,12 @@ Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 
 ## Vanilla Kubernetes from Cloud Shell
 
-[Open in Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md) clones this repository and opens [docs/cloudshell-tutorial.md](docs/cloudshell-tutorial.md). The same steps are on the site at [docs/gke/index.html](docs/gke/index.html) ([español](docs/es/gke/index.html)). Cloud Shell is only the client. The cluster is a [GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-zonal-cluster) Standard cluster in your Google Cloud project, and it keeps billing after you close the shell.
+[Open in Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md&show=terminal) clones this repository and opens [docs/cloudshell-tutorial.md](docs/cloudshell-tutorial.md). The same steps are on the site at [docs/cloudshell/index.html](docs/cloudshell/index.html) ([español](docs/es/cloudshell/index.html)).
 
-Use a Standard cluster, not Autopilot. You are its administrator, so you can install the Agent Sandbox CRD. Do not use [deploy/openshift-scc-values.yaml](deploy/openshift-scc-values.yaml) here. That file is for OpenShift `restricted-v2`.
+Cloud Shell already includes [minikube](https://minikube.sigs.k8s.io/docs/start/). `minikube start --driver=docker` is the cluster. It runs in the Cloud Shell VM, the same pattern as [jitsi-helm](https://github.com/maximilianoPizarro/jitsi-helm). It does not create a GKE cluster and it does not keep a separate bill. You administer that cluster, so you can install the Agent Sandbox CRD. Do not use [deploy/openshift-scc-values.yaml](deploy/openshift-scc-values.yaml) here. That file is for OpenShift `restricted-v2`.
 
 ```bash
-export ZONE="${ZONE:-us-central1-a}"
-export CLUSTER="${CLUSTER:-openshell}"
-
-gcloud container clusters create "${CLUSTER}" \
-  --zone "${ZONE}" \
-  --machine-type e2-standard-2 \
-  --num-nodes 2 \
-  --image-type UBUNTU_CONTAINERD
-
-gcloud container clusters get-credentials "${CLUSTER}" --zone "${ZONE}"
+minikube start --driver=docker
 
 kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
@@ -274,10 +265,10 @@ openshell sandbox create \
   -- /usr/bin/python3.12 -c 'print("ok")'
 ```
 
-Delete the cluster when you are done. Closing Cloud Shell does not delete it.
+Delete the minikube cluster when you are done.
 
 ```bash
-gcloud container clusters delete "${CLUSTER}" --zone "${ZONE}"
+minikube delete
 ```
 
 ## OpenShift AI (admin reference)
@@ -345,7 +336,7 @@ This repository is licensed under the [Apache License 2.0](LICENSE).
 
 ## Trademarks
 
-NVIDIA and OpenShell are trademarks of NVIDIA Corporation. This is an independent guide. The NVIDIA logo file is not included; the name links to the product documentation.
+NVIDIA and OpenShell are trademarks of NVIDIA Corporation. This is an independent guide. The wordmark in `docs/assets/logos/nvidia-logo.svg` names the product and is not covered by the Apache-2.0 license. It does not imply endorsement.
 
 The Podman logo in `docs/assets/logos/podman-logo.png` is the project logo from [podman-container-tools/podman](https://github.com/podman-container-tools/podman/tree/main/logo). Podman is a trademark of Red Hat, Inc.
 
