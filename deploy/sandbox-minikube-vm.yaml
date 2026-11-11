@@ -3,8 +3,8 @@
 # This VM is the cluster you administer: minikube, Podman driver, containerd.
 #
 # scripts/sandbox-vm-up.sh fills the cloud-init placeholder. Inline cloud-init is capped
-# at 2048 bytes, and the sandbox webhook requires the fedora user in that
-# text. The guest script is gzipped into it.
+# at 2048 bytes after the sandbox webhook appends its SSH key, and that text
+# must name the fedora user. The guest downloads scripts/minikube-guest-boot.sh.
 # There is no Containerfile. A custom disk is a custom image, and Developer
 # Sandbox shuts those down. The disk is cloned from the fedora DataSource.
 #

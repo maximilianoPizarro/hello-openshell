@@ -46,22 +46,23 @@ else
   else
     py=python
   fi
-  ROOT="${ROOT}" PUB="$(cat "${SANDBOX_VM_KEY}.pub")" PASS="$(cat "${pass_file}")" OUT="${rendered}" \
+  REV="$(git -C "${ROOT}" rev-parse HEAD)"
+  echo "guest boot script commit: ${REV}"
+  ROOT="${ROOT}" PUB="$(cat "${SANDBOX_VM_KEY}.pub")" PASS="$(cat "${pass_file}")" OUT="${rendered}" REV="${REV}" \
     "${py}" - <<'PY'
-import base64
-import gzip
 import os
 from pathlib import Path
 
 root = Path(os.environ["ROOT"])
-script = (root / "scripts" / "minikube-guest-boot.sh").read_bytes().replace(b"\r\n", b"\n")
-blob = base64.b64encode(gzip.compress(script, mtime=0)).decode("ascii")
+url = (
+    "https://raw.githubusercontent.com/maximilianoPizarro/hello-openshell/"
+    + os.environ["REV"]
+    + "/scripts/minikube-guest-boot.sh"
+)
+# No single quotes: this string is one single-quoted cloud-init runcmd.
 command = (
-    "echo "
-    + blob
-    + " | base64 -d | gunzip > /usr/local/sbin/minikube-vm.sh; "
-    + "chmod 755 /usr/local/sbin/minikube-vm.sh; "
-    + "bash /usr/local/sbin/minikube-vm.sh"
+    "i=0; u=%s; while [ $i -lt 12 ]; do curl -fsSL -o /usr/local/sbin/minikube-vm.sh $u && break; i=$((i+1)); sleep 5; done; test -s /usr/local/sbin/minikube-vm.sh && bash /usr/local/sbin/minikube-vm.sh"
+    % url
 )
 user_data = """#cloud-config
 user: fedora
@@ -79,9 +80,10 @@ runcmd:
     command=command,
 )
 size = len(user_data.encode("utf-8"))
-# The sandbox webhook appends its own SSH key before the 2048-byte check.
-if size > 1700:
-    raise SystemExit("cloud-init userData is %s bytes. Keep it under 1700 so the sandbox can add a key." % size)
+# Admission allows 2048 bytes after the sandbox webhook appends its SSH key.
+# An inline copy of the boot script was 1622 bytes and was rejected.
+if size > 1400:
+    raise SystemExit("cloud-init userData is %s bytes. Keep it under 1400 so the sandbox can add a key." % size)
 print("cloud-init userData bytes:", size)
 text = (root / "deploy" / "sandbox-minikube-vm.yaml").read_text(encoding="utf-8").replace("\r\n", "\n")
 lines = text.split("\n")

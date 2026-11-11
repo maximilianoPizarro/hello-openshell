@@ -58,7 +58,7 @@
     </article>
     <article class="step">
       <h2><span>3</span>Arrancar la VM</h2>
-      <p><code>scripts/sandbox-vm-up.sh</code> muestra <code>oc whoami</code> y la <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuota</a>, y aplica <code>deploy/sandbox-minikube-vm.yaml</code>. OpenShift Virtualization clona el DataSource <code>fedora</code> de <code>openshift-virtualization-os-images</code>. No hay imagen propia: Developer Sandbox apaga esas. <code>runStrategy</code> es <code>Manual</code>, y el script arranca el guest con el subrecurso start. El cloud-init inline tiene un tope de 2048 bytes y tiene que nombrar al usuario <code>fedora</code>, así que el script comprime <code>scripts/minikube-guest-boot.sh</code> dentro de ese texto.</p>
+      <p><code>scripts/sandbox-vm-up.sh</code> muestra <code>oc whoami</code> y la <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">cuota</a>, y aplica <code>deploy/sandbox-minikube-vm.yaml</code>. OpenShift Virtualization clona el DataSource <code>fedora</code> de <code>openshift-virtualization-os-images</code>. No hay imagen propia: Developer Sandbox apaga esas. <code>runStrategy</code> es <code>Manual</code>, y el script arranca el guest con el subrecurso start. El cloud-init inline tiene que nombrar al usuario <code>fedora</code> y queda bajo 2048 bytes después de que el webhook del sandbox agrega su clave. Ese texto baja <code>scripts/minikube-guest-boot.sh</code> de este repositorio, en el commit del workspace.</p>
       <table>
         <thead><tr><th>Pieza</th><th>Valor</th></tr></thead>
         <tbody>
