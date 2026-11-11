@@ -226,10 +226,13 @@ Details: [docs/sandbox/index.html](docs/sandbox/index.html).
 
 [Open in Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&cloudshell_git_branch=main&cloudshell_tutorial=docs/cloudshell-tutorial.md&show=terminal) clones this repository and opens [docs/cloudshell-tutorial.md](docs/cloudshell-tutorial.md). The same steps are on the site at [docs/cloudshell/index.html](docs/cloudshell/index.html) ([español](docs/es/cloudshell/index.html)).
 
-Cloud Shell already includes [minikube](https://minikube.sigs.k8s.io/docs/start/). `minikube start --driver=docker` is the cluster. It runs in the Cloud Shell VM, the same pattern as [jitsi-helm](https://github.com/maximilianoPizarro/jitsi-helm). It does not create a GKE cluster and it does not keep a separate bill. You administer that cluster, so you can install the Agent Sandbox CRD. Do not use [deploy/openshift-scc-values.yaml](deploy/openshift-scc-values.yaml) here. That file is for OpenShift `restricted-v2`.
+Cloud Shell already includes [minikube](https://minikube.sigs.k8s.io/docs/start/). The cluster runs in that VM, the same pattern as [jitsi-helm](https://github.com/maximilianoPizarro/jitsi-helm). It does not create a GKE cluster and it does not keep a separate bill. You administer it, so you can install the Agent Sandbox CRD. Do not use [deploy/openshift-scc-values.yaml](deploy/openshift-scc-values.yaml) here. That file is for OpenShift `restricted-v2`.
+
+Use containerd. The Docker runtime does not advertise `supplementalGroupsPolicy`, and the sandbox pod sets that field to `Strict`. Cloud Shell exports `MINIKUBE_FORCE_SYSTEMD=true`. Pass `--force-systemd=false` so runc accepts the kubelet cgroupfs path. The node is usable when the runtime is `containerd://2` and `strict=true`.
 
 ```bash
-minikube start --driver=docker
+MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false
+kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'
 
 kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
@@ -269,7 +272,7 @@ openshell gateway select minikube
 openshell status
 ```
 
-A sandbox that only prints from the hardened image confirms the gateway. The node kernel still has to allow Landlock. If the sandbox log names Landlock or seccomp, that node cannot run OpenShell 0.1.8.
+The Cloud Shell kernel has no `CONFIG_SECURITY_LANDLOCK`. Minikube's docker driver uses that kernel, so the agent container exits immediately with `Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented`. The gateway stays up. A sandbox needs a different kernel. The command below is the check that produced that result.
 
 ```bash
 openshell sandbox create \

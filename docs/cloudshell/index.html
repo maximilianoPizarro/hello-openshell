@@ -33,7 +33,7 @@
     <section class="hero">
       <p class="kicker">minikube · Cloud Shell</p>
       <h1>OpenShell from Cloud Shell</h1>
-      <p class="lede">Cloud Shell already includes minikube. <code>minikube start --driver=docker</code> is the cluster. It runs in that VM. It does not create a GKE cluster. This is not Developer Sandbox.</p>
+      <p class="lede">Cloud Shell already includes minikube. The cluster runs in that VM and does not create a GKE cluster. The gateway comes up on containerd 2. The sandbox does not: this kernel has no <code>CONFIG_SECURITY_LANDLOCK</code>.</p>
       <p><a href="https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&amp;cloudshell_git_branch=main&amp;cloudshell_tutorial=docs/cloudshell-tutorial.md&amp;show=terminal"><img alt="Open in Cloud Shell" src="https://gstatic.com/cloudssh/images/open-btn.svg" height="36"></a></p>
     </section>
     <table>
@@ -49,7 +49,9 @@
     <article class="step">
       <h2><span>1</span>Start minikube</h2>
       <p>You administer this cluster, so you can install the Agent Sandbox CRD. Do not pass <code>deploy/openshift-scc-values.yaml</code>. That file is for OpenShift <code>restricted-v2</code>.</p>
-      <pre><code>minikube start --driver=docker</code></pre>
+      <p>Use containerd. Cloud Shell sets <code>MINIKUBE_FORCE_SYSTEMD=true</code>, and that combination makes runc reject the kubelet cgroup path. Continue only when the node prints <code>containerd://2</code> and <code>strict=true</code>.</p>
+      <pre><code>MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false
+kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'</code></pre>
     </article>
     <article class="step">
       <h2><span>2</span>Agent Sandbox and the gateway</h2>
@@ -86,7 +88,7 @@ openshell status</code></pre>
     </article>
     <article class="step">
       <h2><span>4</span>Smoke test</h2>
-      <p>A sandbox that only prints confirms the gateway. The node kernel still has to allow Landlock. With the docker driver, that kernel is the Cloud Shell VM. If the sandbox log names Landlock or seccomp, this VM cannot run OpenShell 0.1.8. The policy sets user and group <code>65532</code> for the hardened image.</p>
+      <p>On Cloud Shell the agent container exits 1 in the same second it starts. The log is <code>Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented</code>. Minikube uses the Cloud Shell kernel, and that kernel has no <code>CONFIG_SECURITY_LANDLOCK</code>. The gateway stays up. A sandbox needs another kernel.</p>
       <pre><code>openshell sandbox create \
   --name model-check \
   --from registry.access.redhat.com/hi/python:3.12 \

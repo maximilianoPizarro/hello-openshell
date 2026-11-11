@@ -4,10 +4,10 @@ Cloud Shell is the client. `minikube start` creates a Kubernetes cluster inside 
 
 ## Start minikube
 
-Cloud Shell already includes minikube. The docker driver is the one that starts there.
+Cloud Shell already includes minikube. Use containerd, and do not force systemd. The Docker runtime cannot admit `supplementalGroupsPolicy: Strict`.
 
 ```bash
-minikube start --driver=docker
+MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false
 ```
 
 ## Install Agent Sandbox
@@ -66,7 +66,7 @@ openshell status
 openshell sandbox create --name model-check --from registry.access.redhat.com/hi/python:3.12 --policy deploy/hi-python.policy.yaml -- /usr/bin/python3.12 -c 'print("ok")'
 ```
 
-A Landlock or seccomp error means this node kernel cannot run an OpenShell 0.1.8 sandbox. With the docker driver, that kernel is the Cloud Shell VM.
+On Cloud Shell this command exits 1. The kernel has no `CONFIG_SECURITY_LANDLOCK`, and minikube uses that kernel. OpenShell 0.1.8 requires Landlock ABI v3 (Linux 6.2+). The gateway process stays up.
 
 ## Delete the cluster
 
