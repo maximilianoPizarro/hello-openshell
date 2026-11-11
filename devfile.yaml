@@ -103,6 +103,15 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: start-rhel-vm
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-rhel-up.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Start RHEL terminal
+      group:
+        kind: run
+        isDefault: false
   - id: openshell-version
     exec:
       component: tools

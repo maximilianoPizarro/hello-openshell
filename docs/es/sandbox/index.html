@@ -94,7 +94,14 @@ openshell sandbox create \
     </article>
     <article class="step">
       <h2><span>7</span>Clean</h2>
-      <p>La tarea <strong>8. Clean</strong> corta el túnel SSH y borra <code>minikube-vm</code> más los objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
+      <p>La tarea <strong>8. Clean</strong> corta el túnel SSH y borra <code>minikube-vm</code>, <code>rhel-vm</code> y los objetos con la etiqueta <code>app.kubernetes.io/part-of=hello-openshell</code>. No borra modelos compartidos ni el workspace.</p>
+    </article>
+    <article class="step">
+      <h2><span>+</span>Terminal RHEL</h2>
+      <p><strong>Start RHEL terminal</strong> aplica <code>deploy/sandbox-rhel-vm.yaml</code>. Ese guest es <code>rhel-vm</code>, clonado del DataSource <code>rhel9</code> con la preferencia <code>rhel.9</code>. El usuario es <code>cloud-user</code>. La contraseña queda en <code>~/.config/hello-openshell/rhel.password</code>, y la clave del workspace es la misma que la de la VM Fedora. Este guest no instala minikube. <code>dnf</code> en la imagen del catálogo pide suscripción, así que el gateway sigue en <code>minikube-vm</code>.</p>
+      <pre><code>ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
+  cloud-user@rhel-vm.$(oc project -q).svc.cluster.local</code></pre>
+      <p>Desde una laptop, <code>oc port-forward svc/rhel-vm 2222:22</code> y SSH a <code>127.0.0.1</code> en el puerto 2222. La consola usa el mismo usuario y el mismo archivo de contraseña. Apagá la VM Fedora primero si la cuota está llena. Developer Sandbox igual apaga el guest a la hora.</p>
     </article>
     <section class="note warn">
       <p><strong>Gateway.</strong> Un proyecto de Developer Sandbox no puede crear CRDs, namespaces ni ClusterRoles, y <code>agents.x-k8s.io</code> no está servida, así que el chart 0.1.8 no se puede instalar en el proyecto. El chart corre dentro del minikube de la VM de OpenShift Virtualization, donde esos límites no aplican. No pases valores de SCC de OpenShift a ese minikube. El módulo para un clúster que administres es <a href="../openshift/index.html">OpenShift AI</a>.</p>

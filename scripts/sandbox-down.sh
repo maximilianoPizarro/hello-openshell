@@ -18,8 +18,8 @@ oc delete vm,vmi,dv,pvc \
   --ignore-not-found \
   --wait=false \
   || true
-oc delete vm,svc minikube-vm hello-openshell-minikube --ignore-not-found --wait=false || true
-oc delete dv,pvc minikube-vm-disk hello-openshell-minikube-disk --ignore-not-found --wait=false || true
+oc delete vm,svc minikube-vm rhel-vm hello-openshell-minikube --ignore-not-found --wait=false || true
+oc delete dv,pvc minikube-vm-disk rhel-vm-disk hello-openshell-minikube-disk --ignore-not-found --wait=false || true
 
 oc delete all,secret,configmap,route,job \
   -l app.kubernetes.io/part-of=hello-openshell \

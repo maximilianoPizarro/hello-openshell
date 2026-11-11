@@ -220,6 +220,7 @@ The sandbox project cannot install the gateway. It cannot create CRDs, namespace
 | 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
 | 8. Clean | `bash scripts/sandbox-down.sh` |
 | 9. Inspect cluster | `bash scripts/sandbox-vm-inspect.sh` |
+| Start RHEL terminal | `bash scripts/sandbox-rhel-up.sh` |
 
 **OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand.
 
@@ -246,7 +247,16 @@ openshell sandbox create \
 
 OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
-Commands 6 and 7 do not use the VM. There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running them. Command 8 deletes `minikube-vm` and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+Commands 6 and 7 do not use the VM. There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running them. Command 8 deletes `minikube-vm`, `rhel-vm`, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+
+**Start RHEL terminal** applies [deploy/sandbox-rhel-vm.yaml](deploy/sandbox-rhel-vm.yaml). It is a second guest, `rhel-vm`, cloned from the `rhel9` DataSource with preference `rhel.9`. The user is `cloud-user`. The script writes a password to `~/.config/hello-openshell/rhel.password` and authorizes the same workspace key as the Fedora VM. From the workspace shell:
+
+```bash
+ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
+  cloud-user@rhel-vm.$(oc project -q).svc.cluster.local
+```
+
+A laptop cannot resolve that name. Forward the service, then use port 2222: `oc port-forward svc/rhel-vm 2222:22`. The OpenShift console login is `cloud-user` plus that password file. This guest does not install minikube: `dnf` on the catalog image needs a subscription. The gateway stays on `minikube-vm`. Both disks are 30Gi and both guests are 8Gi, so stop the Fedora VM before starting this one if the quota is already full. Developer Sandbox still powers it off after one hour. If the VM object already exists, the script leaves the disk and cloud-init alone.
 
 Command 9 prints the same objects from the workspace shell. `oc` sees the VirtualMachine. `openshell` sees `model-check`. `kubectl` for minikube runs inside the guest, over SSH:
 
