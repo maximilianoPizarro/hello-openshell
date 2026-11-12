@@ -28,14 +28,14 @@ oc delete pod "${POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
 export MSYS_NO_PATHCONV=1
 echo "Asking from a pod in ${NS} (in-cluster DNS, no LiteMaaS key)."
 
-# The remote script never prints the token.
-if ! ASK_TOKEN="${TOKEN}" ASK_PROMPT="${PROMPT}" oc run "${POD}" \
+# oc run --env requires KEY=value. The remote script never prints the token.
+if ! oc run "${POD}" \
   --image=curlimages/curl:8.11.1 \
   --restart=Never \
   --rm -i \
   --quiet \
-  --env=ASK_TOKEN \
-  --env=ASK_PROMPT \
+  --env="ASK_TOKEN=${TOKEN}" \
+  --env="ASK_PROMPT=${PROMPT}" \
   --command -- sh -s <<'REMOTE'
 set -eu
 bases="
