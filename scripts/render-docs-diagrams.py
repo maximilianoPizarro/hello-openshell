@@ -103,9 +103,12 @@ def defs() -> str:
 
 def svg(width: int, height: int, title: str, body: str, *, bare: bool = False) -> str:
     head = "" if bare else header(title, width)
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="{escape(title)}">
+    # width/height 100% + color-scheme dark fill the viewer; otherwise the UA
+    # paints white letterbox bars when the file is opened on its own.
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="background-color:{BG};color-scheme:dark;display:block" role="img" aria-label="{escape(title)}">
   <title>{escape(title)}</title>
-  <rect width="{width}" height="{height}" fill="{BG}"/>
+  <style><![CDATA[:root {{ background-color: {BG}; color-scheme: dark; }}]]></style>
+  <rect x="0" y="0" width="{width}" height="{height}" fill="{BG}"/>
   {defs()}
   {head}
   {body}
@@ -116,7 +119,10 @@ def svg(width: int, height: int, title: str, body: str, *, bare: bool = False) -
 def write(name: str, width: int, height: int, title: str, body: str, *, bare: bool = False) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     path = OUT / name
-    path.write_text(svg(width, height, title, body, bare=bare), encoding="utf-8")
+    text = svg(width, height, title, body, bare=bare)
+    if f'style="background-color:{BG}' not in text or 'color-scheme:dark' not in text:
+        raise SystemExit(f"{name}: svg root must fill the viewer with {BG}")
+    path.write_text(text, encoding="utf-8")
     print(path, path.stat().st_size)
 
 

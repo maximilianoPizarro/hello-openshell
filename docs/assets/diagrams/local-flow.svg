@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" role="img" aria-label="ask.py through the sandbox">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="background-color:#151515;color-scheme:dark;display:block" role="img" aria-label="ask.py through the sandbox">
   <title>ask.py through the sandbox</title>
-  <rect width="1200" height="280" fill="#151515"/>
+  <style><![CDATA[:root { background-color: #151515; color-scheme: dark; }]]></style>
+  <rect x="0" y="0" width="1200" height="280" fill="#151515"/>
   <defs>
   <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
     <path d="M 0 0 L 10 5 L 0 10 z" fill="#0066cc"/>
