@@ -43,6 +43,9 @@ if command -v openshell >/dev/null 2>&1; then
   openshell status || true
   openshell sandbox list || true
   openshell logs model-check || true
+  openshell logs hello-ask || true
+  openshell logs hello-agent || true
+  openshell logs hello-turns || true
   openshell policy get model-check --full || true
 else
   echo "openshell is not on PATH. Run 1. Install OpenShell CLI."

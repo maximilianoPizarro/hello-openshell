@@ -2,7 +2,7 @@
 # Same path as make ask / scripts/ask-local.sh: the agent runs inside an
 # OpenShell sandbox on the minikube or MicroShift gateway. The sandbox has
 # no network. The supervisor dials host.openshell.internal:11434 on the guest
-# (a proxy to CPU Ollama in this project). Usage: curl | python
+# (a proxy to CPU Ollama in this project). Usage: curl | python | turns
 # SANDBOX_GATEWAY=minikube|microshift (default minikube).
 set -euo pipefail
 
@@ -19,8 +19,8 @@ SANDBOX_IMAGE="${SANDBOX_IMAGE:-registry.access.redhat.com/hi/python:3.12}"
 export MSYS_NO_PATHCONV=1
 export PATH="${HOME}/.local/bin:${PATH}"
 
-if [[ "$MODE" != "curl" && "$MODE" != "python" ]]; then
-  echo "Use: sandbox-ask.sh curl    or    sandbox-ask.sh python"
+if [[ "$MODE" != "curl" && "$MODE" != "python" && "$MODE" != "turns" ]]; then
+  echo "Use: sandbox-ask.sh curl | python | turns"
   exit 1
 fi
 
@@ -29,10 +29,18 @@ if [[ "${SANDBOX_GATEWAY}" != "minikube" && "${SANDBOX_GATEWAY}" != "microshift"
   exit 1
 fi
 
+ASK_PY="${ROOT}/examples/ask.py"
+FOLLOWUP=""
 if [[ "$MODE" == "python" ]]; then
   NAME=hello-agent
   LIST_MODELS=0
   PROMPT='Explica en una frase que es un sandbox y por que un agente deberia correr dentro de uno.'
+elif [[ "$MODE" == "turns" ]]; then
+  NAME=hello-turns
+  LIST_MODELS=0
+  PROMPT='Explica en una frase que es un sandbox y por que un agente deberia correr dentro de uno.'
+  FOLLOWUP='En una frase, por que ese agente no deberia tener red propia?'
+  ASK_PY="${ROOT}/examples/ask_turns.py"
 else
   NAME=hello-ask
   LIST_MODELS=1
@@ -82,20 +90,26 @@ cd "${ROOT}"
 openshell gateway select "${SANDBOX_GATEWAY}"
 host_ip="$(sandbox_guest_host_gateway_ip || true)"
 
-ask_src="$(cat "${ROOT}/examples/ask.py")"
+ask_src="$(cat "${ASK_PY}")"
 openshell sandbox delete "${NAME}" >/dev/null 2>&1 || true
 echo "Creating sandbox ${NAME} from ${SANDBOX_IMAGE}."
+create_args=(
+  --name "${NAME}"
+  --from "${SANDBOX_IMAGE}"
+  --provider ollama
+  --policy "${POLICY}"
+  --env OPENAI_BASE_URL=http://host.openshell.internal:11434/v1
+  --env "MODEL_NAME=${MODEL}"
+  --env OPENAI_API_KEY=fake
+  --env "ASK_PROMPT=${PROMPT}"
+  --env "ASK_LIST_MODELS=${LIST_MODELS}"
+  --env "ASK_HOST_IP=${host_ip}"
+)
+if [ -n "${FOLLOWUP}" ]; then
+  create_args+=(--env "ASK_FOLLOWUP=${FOLLOWUP}")
+fi
 openshell sandbox create \
-  --name "${NAME}" \
-  --from "${SANDBOX_IMAGE}" \
-  --provider ollama \
-  --policy "${POLICY}" \
-  --env OPENAI_BASE_URL=http://host.openshell.internal:11434/v1 \
-  --env "MODEL_NAME=${MODEL}" \
-  --env OPENAI_API_KEY=fake \
-  --env "ASK_PROMPT=${PROMPT}" \
-  --env "ASK_LIST_MODELS=${LIST_MODELS}" \
-  --env "ASK_HOST_IP=${host_ip}" \
+  "${create_args[@]}" \
   --no-credential-warnings \
   -- /usr/bin/python3.12 -c "${ask_src}"
 openshell sandbox list

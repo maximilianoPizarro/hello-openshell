@@ -105,6 +105,7 @@ A5. SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh curl
 A6. SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh python
 A7. SANDBOX_GATEWAY=minikube bash scripts/sandbox-openshell-ui.sh
 A8. SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-inspect.sh
+A9. SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh turns
 B1. bash scripts/sandbox-down.sh
 B2. bash scripts/sandbox-rhel-up.sh
 B3. bash scripts/sandbox-rhel-connect.sh
@@ -112,7 +113,8 @@ B4. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-sandbox.sh
 B5. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh curl
 B6. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh python
 B7. SANDBOX_GATEWAY=microshift bash scripts/sandbox-openshell-ui.sh
-B8. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh</code></pre>
+B8. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh
+B9. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh turns</code></pre>
     </article>
 
     <article class="step" id="fedora">
@@ -156,7 +158,7 @@ openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
       <p>Ask tasks skip import if the profile is already on the gateway or the CLI. <code>already exists</code> is success, not a failure. They do not run <code>openshell gateway remove</code> when the gateway is already connected.</p>
       <h3>2. Create the agent sandbox</h3>
-      <p>The agent is not a separate CR. It is an OpenShell sandbox from <code>registry.access.redhat.com/hi/python:3.12</code> with <code>--provider ollama</code> and <code>--policy deploy/hi-python.policy.yaml</code>. A5 names it <code>hello-ask</code> (lists models, English prompt). A6 names it <code>hello-agent</code> (Spanish prompt). The process is <code>examples/ask.py</code> inlined as <code>python3.12 -c</code>.</p>
+      <p>The agent is not a separate CR. It is an OpenShell sandbox from <code>registry.access.redhat.com/hi/python:3.12</code> with <code>--provider ollama</code> and <code>--policy deploy/hi-python.policy.yaml</code>. A5 names it <code>hello-ask</code> (lists models, English prompt). A6 names it <code>hello-agent</code> (Spanish prompt). A9 names it <code>hello-turns</code> and runs <code>examples/ask_turns.py</code>: two POSTs in the same sandbox, the second using the first answer. The process is inlined as <code>python3.12 -c</code>.</p>
       <pre><code>openshell sandbox create \
   --name hello-agent \
   --from registry.access.redhat.com/hi/python:3.12 \
@@ -229,6 +231,16 @@ openshell sandbox create \
   -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
     </article>
 
+    <article class="step" id="delete-sandboxes">
+      <h2><span>A5–A9</span>Delete sandboxes</h2>
+      <p>Deleting a sandbox does not stop the VM or Ollama. It only removes that OpenShell workload on the gateway. The next Ask task deletes and recreates its own name (<code>hello-ask</code>, <code>hello-agent</code>, <code>hello-turns</code>).</p>
+      <pre><code>export PATH="${HOME}/.local/bin:${PATH}"
+openshell gateway select minikube
+openshell sandbox list
+openshell sandbox delete hello-ask hello-agent hello-turns model-check
+openshell sandbox list</code></pre>
+      <p>On the RHEL path, select <code>microshift</code> instead of <code>minikube</code>. A1 / B1 Clean still deletes the VMs and Ollama.</p>
+    </article>
     <article class="step">
       <h2><span>A1 / B1</span>Clean</h2>
       <p>Tasks <strong>A1. Clean</strong> and <strong>B1. Clean</strong> run the same script. They stop the SSH tunnel and delete <code>minikube-vm</code>, <code>rhel-vm</code>, Ollama, and objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. They do not delete shared models or the workspace. Run Clean before you switch guests.</p>

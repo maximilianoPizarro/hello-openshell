@@ -122,6 +122,15 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: ask-minikube-turns
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh turns
+      workingDir: ${PROJECT_SOURCE}
+      label: "A9. Ask two turns"
+      group:
+        kind: run
+        isDefault: false
   - id: clean-microshift-path
     exec:
       component: tools
@@ -191,6 +200,15 @@ commands:
       commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh
       workingDir: ${PROJECT_SOURCE}
       label: "B8. Inspect cluster"
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-microshift-turns
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh turns
+      workingDir: ${PROJECT_SOURCE}
+      label: "B9. Ask two turns"
       group:
         kind: run
         isDefault: false
