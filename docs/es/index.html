@@ -154,7 +154,7 @@ openshell sandbox create \
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
-      <p>Ask saltea el import si <code>openshell profile get ollama</code> ya funciona en ese gateway. No corre <code>openshell gateway remove</code> si el gateway ya está conectado, así un segundo Ask no cae en <code>custom provider profile 'ollama' already exists</code>.</p>
+      <p>Ask saltea el import si el perfil ya está en el gateway o en el CLI. <code>already exists</code> es éxito, no un error. No corre <code>openshell gateway remove</code> si el gateway ya está conectado.</p>
       <h3>2. Crear el sandbox del agente</h3>
       <p>El agente no es un CR aparte. Es un sandbox de OpenShell desde <code>registry.access.redhat.com/hi/python:3.12</code> con <code>--provider ollama</code> y <code>--policy deploy/hi-python.policy.yaml</code>. A5 lo nombra <code>hello-ask</code> (lista modelos, prompt en inglés). A6 lo nombra <code>hello-agent</code> (prompt en español). El proceso es <code>examples/ask.py</code> inline como <code>python3.12 -c</code>.</p>
       <pre><code>openshell sandbox create \

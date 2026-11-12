@@ -25,13 +25,19 @@ host_to_machine_path() {
 }
 
 ensure_profile() {
+  local out
   if openshell_cmd profile get ollama >/dev/null 2>&1; then
     return
   fi
-  if ! openshell_cmd profile lint -f "$1/$PROFILE"; then
-    echo "profile lint failed; trying import if the CLI already has ollama."
+  if out="$(openshell_cmd profile import -f "$1/$PROFILE" 2>&1)"; then
+    return
   fi
-  openshell_cmd profile import -f "$1/$PROFILE"
+  if printf '%s' "${out}" | grep -qi "already exists"; then
+    echo "profile ollama already exists. Leaving it in place."
+    return
+  fi
+  printf '%s\n' "${out}"
+  return 1
 }
 
 ensure_provider() {

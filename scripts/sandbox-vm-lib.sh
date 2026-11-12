@@ -347,34 +347,48 @@ sandbox_openshell_register_gateway() {
   openshell status
 }
 
+sandbox_openshell_cmd_exists() {
+  printf '%s\n' "${1:-}" | grep -qi "already exists"
+}
+
 sandbox_openshell_ensure_ollama() {
   local root="${1:?}"
   local profile="${root}/deploy/ollama.profile.yaml"
-  local lint_file
+  local out code
   export PATH="${HOME}/.local/bin:${PATH}"
   openshell gateway select "${SANDBOX_GATEWAY:-minikube}"
   if openshell profile get ollama >/dev/null 2>&1; then
     echo "profile ollama is on this gateway."
   else
-    lint_file="$(mktemp)"
-    if ! openshell profile lint -f "${profile}" >"${lint_file}" 2>&1; then
-      if grep -qi "already exists" "${lint_file}"; then
-        echo "CLI already has profile ollama. Re-importing onto this gateway."
-        openshell profile delete ollama >/dev/null 2>&1 || true
-        openshell profile rm ollama >/dev/null 2>&1 || true
-      else
-        cat "${lint_file}"
-        rm -f "${lint_file}"
-        return 1
-      fi
+    set +e
+    out="$(openshell profile import -f "${profile}" 2>&1)"
+    code=$?
+    set -e
+    if [ "${code}" -eq 0 ]; then
+      echo "imported profile ollama."
+    elif sandbox_openshell_cmd_exists "${out}"; then
+      echo "profile ollama already exists. Leaving it in place."
+      openshell profile update ollama -f "${profile}" >/dev/null 2>&1 || true
+    else
+      printf '%s\n' "${out}"
+      return 1
     fi
-    rm -f "${lint_file}"
-    openshell profile import -f "${profile}"
   fi
   if openshell provider get ollama >/dev/null 2>&1; then
     echo "provider ollama exists."
   else
-    openshell provider create --name ollama --type ollama
+    set +e
+    out="$(openshell provider create --name ollama --type ollama 2>&1)"
+    code=$?
+    set -e
+    if [ "${code}" -eq 0 ]; then
+      echo "created provider ollama."
+    elif sandbox_openshell_cmd_exists "${out}"; then
+      echo "provider ollama already exists."
+    else
+      printf '%s\n' "${out}"
+      return 1
+    fi
   fi
 }
 

@@ -154,7 +154,7 @@ openshell sandbox create \
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
-      <p>Ask tasks skip import if <code>openshell profile get ollama</code> already succeeds on that gateway. They do not run <code>openshell gateway remove</code> when the gateway is already connected, so a second Ask does not hit <code>custom provider profile 'ollama' already exists</code>.</p>
+      <p>Ask tasks skip import if the profile is already on the gateway or the CLI. <code>already exists</code> is success, not a failure. They do not run <code>openshell gateway remove</code> when the gateway is already connected.</p>
       <h3>2. Create the agent sandbox</h3>
       <p>The agent is not a separate CR. It is an OpenShell sandbox from <code>registry.access.redhat.com/hi/python:3.12</code> with <code>--provider ollama</code> and <code>--policy deploy/hi-python.policy.yaml</code>. A5 names it <code>hello-ask</code> (lists models, English prompt). A6 names it <code>hello-agent</code> (Spanish prompt). The process is <code>examples/ask.py</code> inlined as <code>python3.12 -c</code>.</p>
       <pre><code>openshell sandbox create \
