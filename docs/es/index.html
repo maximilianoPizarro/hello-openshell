@@ -173,7 +173,7 @@ openshell provider get ollama</code></pre>
         <li><code>ask.py</code> lee <code>OPENAI_BASE_URL</code> y hace POST a <code>/v1/chat/completions</code> (A5 también hace GET a <code>/v1/models</code>).</li>
         <li>El perfil permite ese host y puerto. La política permite <code>/usr/bin/python3.12</code>.</li>
         <li>El supervisor en el guest llama a <code>host.openshell.internal:11434</code>. Connect fija <code>server.hostGatewayIP</code> de OpenShell para que los pods del sandbox en Kubernetes puedan resolver ese nombre (no tienen DNS propio).</li>
-        <li><strong>A2</strong> o <strong>B2</strong> aplica <code>deploy/sandbox-ollama.yaml</code> (Ollama CPU <code>llama3.2:1b</code>, 4Gi, cuota de GPU 0). Connect instala un proxy TCP en el guest para que <code>:11434</code> vaya al ClusterIP de Ollama en este proyecto. El modelo 1b no compite por los 8Gi del guest.</li>
+        <li><strong>A2</strong> o <strong>B2</strong> aplica <code>deploy/sandbox-ollama.yaml</code> (Ollama CPU <code>llama3.2:1b</code>, 4Gi, cuota de GPU 0) y corre un generate en el pod para dejar el modelo en memoria. Un <code>/chat/completions</code> en frío a través del supervisor se cierra antes del primer token. Connect instala un proxy TCP en el guest para que <code>:11434</code> vaya al ClusterIP de Ollama en este proyecto. El modelo 1b no compite por los 8Gi del guest.</li>
         <li>Ollama responde. El sandbox nunca tiene ruta propia.</li>
       </ol>
     </article>

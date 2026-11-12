@@ -46,8 +46,8 @@ if oc get deploy ollama >/dev/null 2>&1; then
   echo "Deployment ollama already exists."
 else
   quota_ok
-  oc apply -f "${ROOT}/deploy/sandbox-ollama.yaml"
 fi
+oc apply -f "${ROOT}/deploy/sandbox-ollama.yaml"
 
 echo "Waiting for Ollama to become ready (image pull can take a few minutes)."
 if ! oc rollout status deploy/ollama --timeout=420s; then
@@ -69,6 +69,11 @@ if oc exec "${POD}" -- ollama list 2>/dev/null | grep -q "${MODEL}"; then
 else
   echo "Pulling ${MODEL} (~1.3 GiB). First time only; emptyDir is lost if the pod is recreated."
   oc exec "${POD}" -- ollama pull "${MODEL}"
+fi
+
+echo "Loading ${MODEL} in the pod. A cold /chat/completions through the sandbox supervisor is closed before the first token."
+if ! oc exec "${POD}" -- ollama run "${MODEL}" "hi"; then
+  echo "Warmup generate failed. Ask may still hit a closed connection on the first completion."
 fi
 
 echo "Ollama: http://ollama.${NS}.svc.cluster.local:11434/v1"

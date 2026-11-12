@@ -1,6 +1,9 @@
+import http.client
 import json
 import os
 import socket
+import time
+import urllib.error
 import urllib.request
 
 # Kubernetes sandboxes have no DNS. OpenShell injects host.openshell.internal
@@ -50,27 +53,61 @@ prompt = os.environ.get(
 headers = {
     "Content-Type": "application/json",
     "Authorization": "Bearer " + token,
+    "Connection": "close",
 }
+
+
+def urlopen_retry(req, timeout, attempts=4):
+    last = None
+    for i in range(attempts):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout)
+        except (
+            http.client.RemoteDisconnected,
+            http.client.IncompleteRead,
+            ConnectionResetError,
+            urllib.error.URLError,
+        ) as exc:
+            last = exc
+            time.sleep(min(8 * (i + 1), 24))
+    raise last
+
 
 if os.environ.get("ASK_LIST_MODELS") == "1":
     models_req = urllib.request.Request(base + "/models", headers=headers)
-    with urllib.request.urlopen(models_req, timeout=60) as models_res:
+    with urlopen_retry(models_req, timeout=60) as models_res:
         print(models_res.read().decode())
 
 payload = {
     "model": model,
     "messages": [{"role": "user", "content": prompt}],
-    "max_tokens": 120,
+    "max_tokens": 80,
     "temperature": 0.2,
+    "stream": False,
 }
 
-request = urllib.request.Request(
-    base + "/chat/completions",
-    data=json.dumps(payload).encode(),
-    headers=headers,
-)
-
-with urllib.request.urlopen(request, timeout=180) as response:
-    body = json.load(response)
+body = None
+last = None
+for i in range(4):
+    request = urllib.request.Request(
+        base + "/chat/completions",
+        data=json.dumps(payload).encode(),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urlopen_retry(request, timeout=300, attempts=1) as response:
+            body = json.load(response)
+        break
+    except (
+        http.client.RemoteDisconnected,
+        http.client.IncompleteRead,
+        ConnectionResetError,
+        urllib.error.URLError,
+    ) as exc:
+        last = exc
+        time.sleep(min(8 * (i + 1), 24))
+if body is None:
+    raise last
 
 print(body["choices"][0]["message"]["content"])

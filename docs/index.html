@@ -173,7 +173,7 @@ openshell provider get ollama</code></pre>
         <li><code>ask.py</code> reads <code>OPENAI_BASE_URL</code> and POSTs <code>/v1/chat/completions</code> (A5 also GETs <code>/v1/models</code>).</li>
         <li>The profile allows that host and port. The policy allows <code>/usr/bin/python3.12</code>.</li>
         <li>The supervisor on the guest dials <code>host.openshell.internal:11434</code>. Connect sets OpenShell <code>server.hostGatewayIP</code> so Kubernetes sandbox pods can resolve that name (they have no DNS of their own).</li>
-        <li><strong>A2</strong> or <strong>B2</strong> applies <code>deploy/sandbox-ollama.yaml</code> (CPU Ollama <code>llama3.2:1b</code>, 4Gi, GPU quota 0). Connect installs a TCP proxy on the guest so <code>:11434</code> forwards to the Ollama ClusterIP in this project. The 1b model does not compete for the guest's 8Gi.</li>
+        <li><strong>A2</strong> or <strong>B2</strong> applies <code>deploy/sandbox-ollama.yaml</code> (CPU Ollama <code>llama3.2:1b</code>, 4Gi, GPU quota 0) and runs a generate in the pod so the model is already in memory. A cold <code>/chat/completions</code> through the supervisor is closed before the first token. Connect installs a TCP proxy on the guest so <code>:11434</code> forwards to the Ollama ClusterIP in this project. The 1b model does not compete for the guest's 8Gi.</li>
         <li>Ollama answers. The sandbox never has a route of its own.</li>
       </ol>
     </article>
