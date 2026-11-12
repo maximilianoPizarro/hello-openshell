@@ -108,7 +108,7 @@ nav.tracks a[aria-current="page"], .lang a[aria-current="page"] {
 .step li { margin: 0 0 6px; }
 
 figure { margin: 14px 0; }
-figure img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #0b100e; }
+figure img, figure svg { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #151515; }
 figcaption { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
 pre {

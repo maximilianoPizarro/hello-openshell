@@ -1,11 +1,14 @@
 #!/bin/bash
 # Same path as make ask / scripts/ask-local.sh: the agent runs inside an
-# OpenShell sandbox on the minikube gateway. The sandbox has no network.
-# The supervisor dials host.openshell.internal:11434 on the Fedora guest
+# OpenShell sandbox on the minikube or MicroShift gateway. The sandbox has
+# no network. The supervisor dials host.openshell.internal:11434 on the guest
 # (a proxy to CPU Ollama in this project). Usage: curl | python
+# SANDBOX_GATEWAY=minikube|microshift (default minikube).
 set -euo pipefail
 
 MODE="${1:-curl}"
+SANDBOX_GATEWAY="${SANDBOX_GATEWAY:-minikube}"
+export SANDBOX_GATEWAY
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=sandbox-vm-lib.sh
 source "${ROOT}/scripts/sandbox-vm-lib.sh"
@@ -22,6 +25,11 @@ if [[ "$MODE" != "curl" && "$MODE" != "python" ]]; then
   exit 1
 fi
 
+if [[ "${SANDBOX_GATEWAY}" != "minikube" && "${SANDBOX_GATEWAY}" != "microshift" ]]; then
+  echo "SANDBOX_GATEWAY must be minikube or microshift."
+  exit 1
+fi
+
 if [[ "$MODE" == "python" ]]; then
   NAME=hello-agent
   LIST_MODELS=0
@@ -32,34 +40,39 @@ else
   PROMPT='In one sentence, what is a sandbox?'
 fi
 
-vm_status="$(oc get vm "${SANDBOX_VM_NAME}" -o jsonpath='{.status.printableStatus}' 2>/dev/null || true)"
+vm_name="$(sandbox_gateway_vm)"
+vm_status="$(oc get vm "${vm_name}" -o jsonpath='{.status.printableStatus}' 2>/dev/null || true)"
 if [ "${vm_status}" != "Running" ]; then
-  echo "minikube-vm is ${vm_status:-missing}. Run 3. Start minikube VM first."
+  echo "${vm_name} is ${vm_status:-missing}. Run $(sandbox_gateway_start_hint) first."
   echo "The Ask tasks run examples/ask.py inside an OpenShell sandbox on that gateway."
-  echo "If rhel-vm is Running, stop it first: quota cannot hold two u1.large VMs plus Ollama."
+  echo "Quota cannot hold two u1.large VMs plus Ollama. Use A1. Clean or B1. Clean before switching guests."
   exit 1
 fi
 
 if [ ! -f "${SANDBOX_VM_KEY}" ]; then
-  echo "No SSH key at ${SANDBOX_VM_KEY}. Run 3. Start minikube VM first."
+  echo "No SSH key at ${SANDBOX_VM_KEY}. Run $(sandbox_gateway_start_hint) first."
   exit 1
 fi
 
 echo "project: ${SANDBOX_VM_NS}"
-echo "Ask ${MODE} runs in sandbox ${NAME} on the minikube gateway (host.openshell.internal:11434)."
+echo "Ask ${MODE} runs in sandbox ${NAME} on the ${SANDBOX_GATEWAY} gateway (host.openshell.internal:11434)."
 
 bash "${ROOT}/scripts/sandbox-ollama-up.sh"
 bash "${ROOT}/scripts/install-openshell-cli.sh"
-bash "${ROOT}/scripts/sandbox-vm-connect.sh"
+if [ "${SANDBOX_GATEWAY}" = "microshift" ]; then
+  bash "${ROOT}/scripts/sandbox-rhel-connect.sh"
+else
+  bash "${ROOT}/scripts/sandbox-vm-connect.sh"
+fi
 sandbox_vm_ensure_ollama_proxy
-if ! sandbox_vm_ssh 'python3 -c "import socket; socket.create_connection((\"127.0.0.1\", 11434), 5)"'; then
-  echo "Fedora :11434 did not accept connections. The sandbox cannot reach Ollama."
-  sandbox_vm_ssh 'sudo -n systemctl status hello-openshell-ollama --no-pager' || true
+if ! sandbox_gateway_ssh 'python3 -c "import socket; socket.create_connection((\"127.0.0.1\", 11434), 5)"'; then
+  echo "Guest :11434 did not accept connections. The sandbox cannot reach Ollama."
+  sandbox_gateway_ssh 'sudo -n systemctl status hello-openshell-ollama --no-pager' || true
   exit 1
 fi
 
 cd "${ROOT}"
-openshell gateway select minikube
+openshell gateway select "${SANDBOX_GATEWAY}"
 
 if ! openshell profile get ollama >/dev/null 2>&1; then
   openshell profile lint -f "${PROFILE}"

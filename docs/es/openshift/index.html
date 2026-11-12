@@ -9,15 +9,25 @@
   <meta property="og:title" content="OpenShift AI">
   <meta property="og:description" content="Referencia de admin para OpenShell 0.1.8 en OpenShift AI: Granite en una GPU, el token no sale del gateway.">
   <meta property="og:url" content="https://maximilianopizarro.github.io/hello-openshell/es/openshift/">
-  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/openshift-architecture.jpg">
+  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/brand/og-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="hello-openshell — OpenShell 0.1.8 on Developer Sandbox, OpenShift, Cloud Shell, and local Podman">
+  <meta property="og:site_name" content="hello-openshell">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="OpenShift AI">
   <meta name="twitter:description" content="Referencia de admin para OpenShell 0.1.8 en OpenShift AI: Granite en una GPU, el token no sale del gateway.">
-  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/openshift-architecture.jpg">
+  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/brand/og-preview.png">
   <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/es/openshift/">
   <link rel="alternate" hreflang="en" href="https://maximilianopizarro.github.io/hello-openshell/openshift/">
   <link rel="alternate" hreflang="es" href="https://maximilianopizarro.github.io/hello-openshell/es/openshift/">
-  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/openshift/">
+  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon.svg?v=1" type="image/svg+xml">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon-32.png?v=1" sizes="32x32" type="image/png">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon-16.png?v=1" sizes="16x16" type="image/png">
+  <link rel="shortcut icon" href="/hello-openshell/assets/brand/favicon.ico?v=1">
+  <link rel="apple-touch-icon" href="/hello-openshell/assets/brand/apple-touch-icon.png?v=1">
   <link rel="stylesheet" href="../../css/site.css">
 </head>
 <body>
@@ -32,10 +42,10 @@
         <strong>hello-openshell</strong>
       </a>
       <nav class="tracks" aria-label="Recorridos">
-        <a href="../index.html">Local</a>
-        <a href="../sandbox/index.html">Developer Sandbox</a>
+        <a href="../index.html">Developer Sandbox</a>
         <a href="index.html" aria-current="page">OpenShift</a>
         <a href="../cloudshell/index.html">Cloud Shell</a>
+        <a href="../local/index.html">Local</a>
       </nav>
       <nav class="lang" aria-label="Idioma">
         <a href="../../openshift/index.html">EN</a>
@@ -47,10 +57,10 @@
     <section class="hero">
       <p class="kicker">Admin del clúster · OpenShift 4.19+</p>
       <h1>OpenShift AI</h1>
-      <p class="lede">Granite 3.3 2B en una GPU NVIDIA, el gateway de OpenShell 0.1.8 sin el SCC <code>privileged</code>, y un sandbox que solo ve el placeholder <code>RHOAI_API_TOKEN</code>. El texto largo, en inglés, es <a href="../../openshift-ai.md">openshift-ai.md</a>. Este módulo no se aplicó en la máquina donde corrió el camino local.</p>
+      <p class="lede">Granite 3.3 2B en una GPU NVIDIA, el gateway de OpenShell 0.1.8 sin el SCC <code>privileged</code>, y un sandbox que solo ve el placeholder <code>RHOAI_API_TOKEN</code>. El texto largo, en inglés, es <a href="../../openshift-ai.md">openshift-ai.md</a>.</p>
     </section>
     <figure>
-      <img src="../../assets/diagrams/openshift-architecture.jpg" alt="CLI, port-forward, gateway, supervisor que reemplaza el token y vLLM en una GPU">
+      <img src="../../assets/diagrams/openshift-architecture.svg" alt="CLI, port-forward, gateway, supervisor que reemplaza el token y vLLM en una GPU">
       <figcaption>El supervisor sustituye el token real solo para el host y el puerto del perfil.</figcaption>
     </figure>
     <table>

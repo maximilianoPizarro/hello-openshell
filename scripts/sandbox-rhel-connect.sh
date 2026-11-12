@@ -80,7 +80,7 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
   else
     if printf '%s\n' "${err}" | grep -q "Permission denied"; then
       echo "This workspace key is not authorized in the VM."
-      echo "Cloud-init keeps the key from the first boot. Run the Clean task, then Start RHEL terminal."
+      echo "Cloud-init keeps the key from the first boot. Run B1. Clean, then B2. Start RHEL VM."
       exit 1
     fi
     printf '%s\n' "${err}" | tail -n 3

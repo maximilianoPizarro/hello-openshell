@@ -31,30 +31,29 @@ if ! command -v ttyd >/dev/null 2>&1; then
   chmod 755 "${DEST}/ttyd"
 fi
 
-select_gateway() {
-  if openshell gateway select minikube >/dev/null 2>&1; then
-    echo "gateway: minikube"
-    return 0
-  fi
-  if openshell gateway select microshift >/dev/null 2>&1; then
-    echo "gateway: microshift"
-    return 0
-  fi
-  return 1
-}
-
-if oc get vm minikube-vm -o jsonpath='{.status.printableStatus}' 2>/dev/null | grep -qx Running; then
-  bash "${ROOT}/scripts/sandbox-vm-connect.sh"
-elif oc get vm rhel-vm -o jsonpath='{.status.printableStatus}' 2>/dev/null | grep -qx Running; then
-  if [ -f "${ROOT}/scripts/sandbox-rhel-connect.sh" ]; then
-    echo "minikube-vm is not Running. Using the RHEL MicroShift gateway if it is already connected."
+if [ -z "${SANDBOX_GATEWAY:-}" ]; then
+  if oc get vm minikube-vm -o jsonpath='{.status.printableStatus}' 2>/dev/null | grep -qx Running; then
+    SANDBOX_GATEWAY=minikube
+  elif oc get vm rhel-vm -o jsonpath='{.status.printableStatus}' 2>/dev/null | grep -qx Running; then
+    SANDBOX_GATEWAY=microshift
+  else
+    SANDBOX_GATEWAY=minikube
   fi
 fi
+export SANDBOX_GATEWAY
 
-if ! select_gateway; then
-  echo "No OpenShell gateway is registered. Run 4. Connect minikube gateway, or Connect MicroShift."
+if [ "${SANDBOX_GATEWAY}" = "microshift" ]; then
+  bash "${ROOT}/scripts/sandbox-rhel-connect.sh"
+else
+  bash "${ROOT}/scripts/sandbox-vm-connect.sh"
+fi
+
+if ! openshell gateway select "${SANDBOX_GATEWAY}"; then
+  echo "No OpenShell gateway named ${SANDBOX_GATEWAY}."
+  echo "Run A3. Connect minikube gateway, or B3. Connect MicroShift."
   exit 1
 fi
+echo "gateway: ${SANDBOX_GATEWAY}"
 openshell status || true
 
 print_urls() {

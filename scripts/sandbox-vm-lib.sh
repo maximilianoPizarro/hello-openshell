@@ -8,6 +8,7 @@ fi
 SANDBOX_VM_LIB=1
 
 SANDBOX_VM_NAME=minikube-vm
+RHEL_VM_NAME=rhel-vm
 SANDBOX_VM_CFG="${HOME}/.config/hello-openshell"
 SANDBOX_VM_KEY="${SANDBOX_VM_CFG}/minikube_ed25519"
 SANDBOX_VM_NS="$(oc project -q)"
@@ -22,6 +23,43 @@ sandbox_vm_ssh() {
     -o ServerAliveCountMax=4 \
     "fedora@${SANDBOX_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local" \
     "$@"
+}
+
+sandbox_rhel_ssh() {
+  ssh -i "${SANDBOX_VM_KEY}" \
+    -o IdentitiesOnly=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -o UserKnownHostsFile="${SANDBOX_VM_CFG}/known_hosts" \
+    -o ConnectTimeout=8 \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=4 \
+    "cloud-user@${RHEL_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local" \
+    "$@"
+}
+
+sandbox_gateway_ssh() {
+  case "${SANDBOX_GATEWAY:-minikube}" in
+    microshift) sandbox_rhel_ssh "$@" ;;
+    minikube) sandbox_vm_ssh "$@" ;;
+    *)
+      echo "SANDBOX_GATEWAY must be minikube or microshift (got ${SANDBOX_GATEWAY:-})."
+      return 1
+      ;;
+  esac
+}
+
+sandbox_gateway_vm() {
+  case "${SANDBOX_GATEWAY:-minikube}" in
+    microshift) echo "${RHEL_VM_NAME}" ;;
+    *) echo "${SANDBOX_VM_NAME}" ;;
+  esac
+}
+
+sandbox_gateway_start_hint() {
+  case "${SANDBOX_GATEWAY:-minikube}" in
+    microshift) echo "B1. Clean, then B2. Start RHEL VM" ;;
+    *) echo "A1. Clean, then A2. Start minikube VM" ;;
+  esac
 }
 
 # kubectl port-forward exits when its API connection drops. A unit brings it back.
@@ -59,17 +97,18 @@ EOF
 }
 
 # Sandboxes have no network. The supervisor dials host.openshell.internal:11434
-# on the Fedora guest. That port is a TCP proxy to Ollama in this project, so
-# the 1b model does not compete with minikube for the guest's 8Gi.
+# on the guest (Fedora minikube or RHEL MicroShift). That port is a TCP proxy
+# to Ollama in this project, so the 1b model does not compete for the guest's 8Gi.
 sandbox_vm_ensure_ollama_proxy() {
-  local upstream
+  local upstream guest
+  guest="$(sandbox_gateway_vm)"
   upstream="$(oc get svc ollama -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)"
   if [ -z "${upstream}" ]; then
     echo "Service ollama has no ClusterIP. Start Ollama in this project first."
     return 1
   fi
-  echo "Fedora :11434 -> ${upstream}:11434 (Ollama in ${SANDBOX_VM_NS})"
-  sandbox_vm_ssh sudo -n bash -s <<EOF
+  echo "${guest} :11434 -> ${upstream}:11434 (Ollama in ${SANDBOX_VM_NS})"
+  sandbox_gateway_ssh sudo -n bash -s <<EOF
 set -eu
 cat >/usr/local/bin/hello-openshell-ollama-proxy.py <<'PY'
 #!/usr/bin/python3

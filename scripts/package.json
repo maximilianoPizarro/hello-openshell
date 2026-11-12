@@ -1,0 +1,8 @@
+{
+  "name": "hello-openshell-brand",
+  "private": true,
+  "description": "Generate favicon and Open Graph cover PNGs. Run from the repo root: npm install --prefix scripts && node scripts/generate-favicon.mjs && node scripts/generate-og-preview.mjs",
+  "dependencies": {
+    "sharp": "^0.35.5"
+  }
+}

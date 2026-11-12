@@ -27,7 +27,7 @@ quota_ok() {
   remain=$(( $(to_mi "$hard") - $(to_mi "$used") ))
   if [ "$remain" -lt "$LIMIT_MI" ]; then
     echo "limits.memory remaining is ${remain}Mi. Ollama ${MODEL} needs a 4Gi limit."
-    echo "Stop minikube-vm or rhel-vm (task 8. Clean) and retry. Do not start both VMs plus Ollama."
+    echo "Stop minikube-vm or rhel-vm (A1. Clean or B1. Clean) and retry. Do not start both VMs plus Ollama."
     return 1
   fi
   echo "quota: limits.memory remaining ${remain}Mi (Ollama limit 4Gi, model ${MODEL})"

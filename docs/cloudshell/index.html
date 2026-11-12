@@ -9,15 +9,25 @@
   <meta property="og:title" content="OpenShell from Cloud Shell">
   <meta property="og:description" content="Install the OpenShell gateway on minikube in Google Cloud Shell. The sandbox cannot run: this kernel lacks Landlock.">
   <meta property="og:url" content="https://maximilianopizarro.github.io/hello-openshell/cloudshell/">
-  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/local-architecture.jpg">
+  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/brand/og-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="hello-openshell — OpenShell 0.1.8 on Developer Sandbox, OpenShift, Cloud Shell, and local Podman">
+  <meta property="og:site_name" content="hello-openshell">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="OpenShell from Cloud Shell">
   <meta name="twitter:description" content="Install the OpenShell gateway on minikube in Google Cloud Shell. The sandbox cannot run: this kernel lacks Landlock.">
-  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/local-architecture.jpg">
+  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/brand/og-preview.png">
   <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/cloudshell/">
   <link rel="alternate" hreflang="en" href="https://maximilianopizarro.github.io/hello-openshell/cloudshell/">
   <link rel="alternate" hreflang="es" href="https://maximilianopizarro.github.io/hello-openshell/es/cloudshell/">
-  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/cloudshell/">
+  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon.svg?v=1" type="image/svg+xml">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon-32.png?v=1" sizes="32x32" type="image/png">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon-16.png?v=1" sizes="16x16" type="image/png">
+  <link rel="shortcut icon" href="/hello-openshell/assets/brand/favicon.ico?v=1">
+  <link rel="apple-touch-icon" href="/hello-openshell/assets/brand/apple-touch-icon.png?v=1">
   <link rel="stylesheet" href="../css/site.css">
 </head>
 <body>
@@ -32,10 +42,10 @@
         <strong>hello-openshell</strong>
       </a>
       <nav class="tracks" aria-label="Tracks">
-        <a href="../index.html">Local</a>
-        <a href="../sandbox/index.html">Developer Sandbox</a>
+        <a href="../index.html">Developer Sandbox</a>
         <a href="../openshift/index.html">OpenShift</a>
         <a href="index.html" aria-current="page">Cloud Shell</a>
+        <a href="../local/index.html">Local</a>
       </nav>
       <nav class="lang" aria-label="Language">
         <a href="index.html" aria-current="page">EN</a>
@@ -47,10 +57,13 @@
     <section class="hero">
       <p class="kicker">minikube · Cloud Shell</p>
       <h1>OpenShell from Cloud Shell</h1>
-      <p class="badge">Last checked: 2026-11-11 with OpenShell 0.1.8</p>
       <p class="lede">Cloud Shell already includes minikube. The cluster runs in that VM and does not create a GKE cluster. The gateway comes up on containerd 2. The sandbox does not: this kernel has no <code>CONFIG_SECURITY_LANDLOCK</code>.</p>
       <p><a href="https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&amp;cloudshell_git_branch=main&amp;cloudshell_tutorial=docs/cloudshell-tutorial.md&amp;show=terminal"><img alt="Open in Cloud Shell" src="https://gstatic.com/cloudssh/images/open-btn.svg" height="36"></a></p>
     </section>
+    <figure>
+      <img src="../assets/diagrams/cloudshell-architecture.svg" alt="Cloud Shell minikube can install the OpenShell gateway; the sandbox cannot run because the kernel lacks Landlock">
+      <figcaption>Not a GKE cluster. The sandbox needs Landlock ABI v3. This kernel does not have CONFIG_SECURITY_LANDLOCK.</figcaption>
+    </figure>
     <table>
       <thead><tr><th>Piece</th><th>Version</th></tr></thead>
       <tbody>

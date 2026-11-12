@@ -2,7 +2,7 @@ schemaVersion: 2.2.2
 metadata:
   name: hello-openshell
   displayName: OpenShell on Developer Sandbox
-  description: Dev Spaces workspace with the OpenShell 0.1.8 CLI. A Fedora VM runs minikube for the gateway.
+  description: Two journeys in Terminal → Run Task. Shared 1–2, then A Fedora minikube or B RHEL MicroShift. Clean is the first step of each path.
   language: Python
   projectType: openshell
   tags:
@@ -50,12 +50,21 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: clean-minikube-path
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-down.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "A1. Clean"
+      group:
+        kind: run
+        isDefault: false
   - id: start-minikube-vm
     exec:
       component: tools
       commandLine: bash scripts/sandbox-vm-up.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "3. Start minikube VM"
+      label: "A2. Start minikube VM"
       group:
         kind: run
         isDefault: false
@@ -64,52 +73,61 @@ commands:
       component: tools
       commandLine: bash scripts/sandbox-vm-connect.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "4. Connect minikube gateway"
+      label: "A3. Connect minikube gateway"
       group:
         kind: run
         isDefault: false
   - id: create-minikube-sandbox
     exec:
       component: tools
-      commandLine: bash scripts/sandbox-vm-sandbox.sh
+      commandLine: env SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-sandbox.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "5. Create minikube sandbox"
+      label: "A4. Create minikube sandbox"
       group:
         kind: run
         isDefault: false
-  - id: ask-granite
+  - id: ask-minikube-curl
     exec:
       component: tools
-      commandLine: bash scripts/sandbox-ask.sh curl
+      commandLine: env SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh curl
       workingDir: ${PROJECT_SOURCE}
-      label: "6. Ask from the sandbox"
+      label: "A5. Ask from the sandbox"
       group:
         kind: run
         isDefault: false
-  - id: ask-python
+  - id: ask-minikube-python
     exec:
       component: tools
-      commandLine: bash scripts/sandbox-ask.sh python
+      commandLine: env SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh python
       workingDir: ${PROJECT_SOURCE}
-      label: "7. Ask with ask.py"
+      label: "A6. Ask with ask.py"
       group:
         kind: run
         isDefault: false
-  - id: clean
+  - id: openshell-ui-minikube
     exec:
       component: tools
-      commandLine: bash scripts/sandbox-down.sh
+      commandLine: env SANDBOX_GATEWAY=minikube bash scripts/sandbox-openshell-ui.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "8. Clean"
+      label: "A7. OpenShell UI"
       group:
         kind: run
         isDefault: false
   - id: inspect-minikube
     exec:
       component: tools
-      commandLine: bash scripts/sandbox-vm-inspect.sh
+      commandLine: env SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-inspect.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "9. Inspect cluster"
+      label: "A8. Inspect cluster"
+      group:
+        kind: run
+        isDefault: false
+  - id: clean-microshift-path
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-down.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "B1. Clean"
       group:
         kind: run
         isDefault: false
@@ -118,7 +136,7 @@ commands:
       component: tools
       commandLine: bash scripts/sandbox-rhel-up.sh
       workingDir: ${PROJECT_SOURCE}
-      label: Start RHEL terminal
+      label: "B2. Start RHEL VM"
       group:
         kind: run
         isDefault: false
@@ -127,7 +145,52 @@ commands:
       component: tools
       commandLine: bash scripts/sandbox-rhel-connect.sh
       workingDir: ${PROJECT_SOURCE}
-      label: Connect MicroShift
+      label: "B3. Connect MicroShift"
+      group:
+        kind: run
+        isDefault: false
+  - id: create-microshift-sandbox
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-sandbox.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "B4. Create MicroShift sandbox"
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-microshift-curl
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh curl
+      workingDir: ${PROJECT_SOURCE}
+      label: "B5. Ask from the sandbox"
+      group:
+        kind: run
+        isDefault: false
+  - id: ask-microshift-python
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh python
+      workingDir: ${PROJECT_SOURCE}
+      label: "B6. Ask with ask.py"
+      group:
+        kind: run
+        isDefault: false
+  - id: openshell-ui-microshift
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-openshell-ui.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "B7. OpenShell UI"
+      group:
+        kind: run
+        isDefault: false
+  - id: inspect-microshift
+    exec:
+      component: tools
+      commandLine: env SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: "B8. Inspect cluster"
       group:
         kind: run
         isDefault: false
@@ -137,15 +200,6 @@ commands:
       commandLine: bash -lc 'bash scripts/install-openshell-cli.sh && openshell --version; openshell status || true'
       workingDir: ${PROJECT_SOURCE}
       label: OpenShell version
-      group:
-        kind: run
-        isDefault: false
-  - id: openshell-ui
-    exec:
-      component: tools
-      commandLine: bash scripts/sandbox-openshell-ui.sh
-      workingDir: ${PROJECT_SOURCE}
-      label: "10. OpenShell UI"
       group:
         kind: run
         isDefault: false

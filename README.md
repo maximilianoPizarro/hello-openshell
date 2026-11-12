@@ -15,10 +15,10 @@
 
 | Track | Where it runs | What serves the model |
 | --- | --- | --- |
-| Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
-| Developer Sandbox | Dev Spaces, gateway on an OpenShift Virtualization VM | OpenShell sandbox on that gateway; Ollama `llama3.2:1b` via `host.openshell.internal:11434` |
+| Developer Sandbox | Dev Spaces, gateway on Fedora minikube or RHEL MicroShift | OpenShell sandbox; Ollama `llama3.2:1b` via `host.openshell.internal:11434` |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
-| Cloud Shell | minikube inside Cloud Shell | Gateway only. This kernel cannot run a sandbox. |
+| Cloud Shell | minikube inside Cloud Shell | Gateway only. This kernel cannot run a sandbox (no Landlock). |
+| Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
 
 The step-by-step site is in [docs/](docs/index.html) (English and Spanish). The cluster write-up is [docs/openshift-ai.md](docs/openshift-ai.md). What this guide was written against is in [docs/tested-environments.md](docs/tested-environments.md).
 

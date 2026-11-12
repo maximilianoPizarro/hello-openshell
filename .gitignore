@@ -1,6 +1,9 @@
 # Windows device name accidentally created in the tree
 NUL
 
+# sharp used only to regenerate docs/assets/brand PNG/ICO
+scripts/node_modules/
+
 # Secrets and local env
 .env
 .env.*

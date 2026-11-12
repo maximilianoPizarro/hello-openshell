@@ -2,137 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=../">
+  <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/">
   <title>Developer Sandbox</title>
-  <meta name="description" content="Run the OpenShell 0.1.8 CLI from Dev Spaces. The gateway lives on minikube inside an OpenShift Virtualization Fedora VM in Developer Sandbox.">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Developer Sandbox">
-  <meta property="og:description" content="Run the OpenShell 0.1.8 CLI from Dev Spaces. The gateway lives on minikube inside an OpenShift Virtualization Fedora VM.">
-  <meta property="og:url" content="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
-  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/sandbox-architecture.jpg">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Developer Sandbox">
-  <meta name="twitter:description" content="Run the OpenShell 0.1.8 CLI from Dev Spaces. The gateway lives on minikube inside an OpenShift Virtualization Fedora VM.">
-  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/sandbox-architecture.jpg">
-  <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
-  <link rel="alternate" hreflang="en" href="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
-  <link rel="alternate" hreflang="es" href="https://maximilianopizarro.github.io/hello-openshell/es/sandbox/">
-  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
-  <link rel="stylesheet" href="../css/site.css">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon.svg?v=1" type="image/svg+xml">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon-32.png?v=1" sizes="32x32" type="image/png">
+  <link rel="icon" href="/hello-openshell/assets/brand/favicon-16.png?v=1" sizes="16x16" type="image/png">
+  <link rel="shortcut icon" href="/hello-openshell/assets/brand/favicon.ico?v=1">
+  <link rel="apple-touch-icon" href="/hello-openshell/assets/brand/apple-touch-icon.png?v=1">
 </head>
 <body>
-  <header class="top">
-    <div class="wrap bar">
-      <a class="brand" href="../index.html">
-        <span class="logos">
-          <img class="nvidia" src="../assets/logos/nvidia-logo.svg" alt="NVIDIA">
-          <img src="../assets/logos/podman-logo.png" alt="Podman">
-          <img src="../assets/logos/python-logo.svg" alt="Python">
-        </span>
-        <strong>hello-openshell</strong>
-      </a>
-      <nav class="tracks" aria-label="Tracks">
-        <a href="../index.html">Local</a>
-        <a href="index.html" aria-current="page">Developer Sandbox</a>
-        <a href="../openshift/index.html">OpenShift</a>
-        <a href="../cloudshell/index.html">Cloud Shell</a>
-      </nav>
-      <nav class="lang" aria-label="Language">
-        <a href="index.html" aria-current="page">EN</a>
-        <a href="../es/sandbox/index.html">ES</a>
-      </nav>
-    </div>
-  </header>
-  <main class="wrap">
-    <section class="hero">
-      <p class="kicker">Experimental · OpenShift Virtualization</p>
-      <h1>Developer Sandbox</h1>
-      <p class="badge">Last checked: 2026-11-12 with OpenShell 0.1.8</p>
-      <p class="lede">Open the repo in a workspace. Startup installs the OpenShell 0.1.8 CLI. The sandbox project cannot host the gateway, so OpenShift Virtualization runs a Fedora VM in that project and the VM runs minikube. From the workspace terminal, the CLI creates the sandbox on that gateway.</p>
-      <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Open in Developer Sandbox</a></p>
-    </section>
-    <figure>
-      <img src="../assets/diagrams/sandbox-architecture.jpg" alt="Dev Spaces workspace, oc whoami token, shared model predictor">
-      <figcaption>Ask tasks run <code>examples/ask.py</code> inside an OpenShell sandbox on the minikube gateway. The supervisor dials <code>host.openshell.internal:11434</code>, proxied to CPU Ollama in this project.</figcaption>
-    </figure>
-    <article class="step">
-      <h2><span>1</span>Open the workspace</h2>
-      <p>Use the button, or in <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> open <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> and create a workspace from this repository. <code>devfile.yaml</code> requests 512Mi / 200m and limits the tools container to 4Gi / 2 CPUs. Storage is ephemeral. On start it runs command 1 below. The other tasks stay manual (<strong>Terminal → Run Task…</strong>). Run them in the workspace shell: that shell can resolve <code>minikube-vm.&lt;project&gt;.svc.cluster.local</code>. A laptop cannot.</p>
-    </article>
-    <article class="step">
-      <h2><span>2</span>Devfile commands</h2>
-      <p>These are the <code>exec</code> commands, in the order you run them. <strong>3. Start minikube VM</strong> already runs <strong>4. Connect minikube gateway</strong> at the end. Run Connect on its own when the VM is already up. <strong>OpenShell version</strong> is optional: <code>openshell --version</code> (there is no <code>openshell version</code> subcommand). <strong>10. OpenShell UI</strong> opens the live TUI in the Dev Spaces browser after command 4.</p>
-      <pre><code>1. bash scripts/install-openshell-cli.sh
-2. bash scripts/sandbox-status.sh
-3. bash scripts/sandbox-vm-up.sh
-4. bash scripts/sandbox-vm-connect.sh
-5. bash scripts/sandbox-vm-sandbox.sh
-6. bash scripts/sandbox-ask.sh curl
-7. bash scripts/sandbox-ask.sh python
-8. bash scripts/sandbox-down.sh
-9. bash scripts/sandbox-vm-inspect.sh
-10. bash scripts/sandbox-openshell-ui.sh
-bash scripts/sandbox-rhel-up.sh
-bash scripts/sandbox-rhel-connect.sh</code></pre>
-    </article>
-    <article class="step">
-      <h2><span>3</span>Start the VM</h2>
-      <p><code>scripts/sandbox-vm-up.sh</code> prints <code>oc whoami</code> and the <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/working_with_quotas/quotas-setting-per-project-quotas">quota</a>, then applies <code>deploy/sandbox-minikube-vm.yaml</code>. OpenShift Virtualization clones the <code>fedora</code> DataSource from <code>openshift-virtualization-os-images</code>. There is no custom image: Developer Sandbox shuts those down. <code>runStrategy</code> is <code>Manual</code>, and the script starts the guest with the start subresource. Inline cloud-init must name the user <code>fedora</code> and stays under 2048 bytes after the sandbox webhook adds its key. The text curls <code>scripts/minikube-guest-boot.sh</code> from this repository at the workspace commit.</p>
-      <table>
-        <thead><tr><th>Piece</th><th>Value</th></tr></thead>
-        <tbody>
-          <tr><td>Instance</td><td><code>u1.large</code>, 2 vCPU / 8Gi, 30Gi disk</td></tr>
-          <tr><td>minikube</td><td>1.39.0, Podman driver, containerd, <code>--memory=3072 --cpus=2 --disk-size=10g --force</code></td></tr>
-          <tr><td>kubectl / Helm</td><td>1.37.0 / 3.22.1</td></tr>
-          <tr><td>Gateway</td><td>Agent Sandbox v1.0.10, OpenShell chart 0.1.8</td></tr>
-        </tbody>
-      </table>
-      <p>The guest script runs as root. minikube 1.39 exits with <code>DRV_AS_ROOT</code> unless <code>--force</code> is set. It also stops if <code>landlock</code> is missing from <code>/sys/kernel/security/lsm</code>. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run the same task again after that. If the VM already exists, the script leaves the disk and cloud-init alone, so a new boot script needs <strong>8. Clean</strong> first. The first successful boot installs the gateway. Connect waits up to 40 minutes for <code>/var/lib/hello-openshell/ready</code>. If that file never appears, the guest log is <code>/var/log/cloud-init-output.log</code>.</p>
-    </article>
-    <article class="step">
-      <h2><span>4</span>Create the sandbox</h2>
-      <p>Task <strong>5. Create minikube sandbox</strong> runs <code>scripts/sandbox-vm-sandbox.sh</code>. It connects the CLI to <code>https://127.0.0.1:8080</code> through an SSH tunnel (the server certificate includes localhost), selects the gateway <code>minikube</code>, and creates the sandbox on the cluster inside the VM:</p>
-      <pre><code>openshell gateway select minikube
-openshell sandbox create \
-  --name model-check \
-  --from registry.access.redhat.com/hi/python:3.12 \
-  --policy deploy/hi-python.policy.yaml \
-  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
-      <p>OpenShell 0.1.8 needs Landlock ABI v3 on the guest kernel. On 11 Nov 2026 this command printed <code>ok</code> and the phase was <code>Completed</code>. The gateway log then shows <code>policy status=loaded</code> and <code>FinalizeMainProcessExit</code>. The pod's containers are <code>agent</code> and two init containers. There is no <code>supervisor</code> container. If a later agent exits, <code>openshell logs model-check</code> and <code>kubectl logs -n openshell default--model-check -c agent</code> are the logs to read. Task <strong>9. Inspect cluster</strong> prints them.</p>
-    </article>
-    <article class="step">
-      <h2><span>5</span>Ask from the sandbox</h2>
-      <p>Task <strong>6. Ask from the sandbox</strong> is the same path as <code>make ask</code> on your machine. It needs commands 3 and 4. It creates the sandbox <code>hello-ask</code> from <code>registry.access.redhat.com/hi/python:3.12</code>, imports <code>deploy/ollama.profile.yaml</code>, and runs <code>examples/ask.py</code> inside that sandbox. The sandbox has no network. The supervisor dials <code>host.openshell.internal:11434</code> on the Fedora guest, which proxies to CPU Ollama <code>llama3.2:1b</code> in this project (<code>deploy/sandbox-ollama.yaml</code>, 4Gi cap, GPU quota 0). Command 6 lists <code>/v1/models</code> and asks one English sentence. If <code>rhel-vm</code> is Running, stop it before command 3.</p>
-    </article>
-    <article class="step">
-      <h2><span>6</span>Ask with ask.py</h2>
-      <p>Task <strong>7. Ask with ask.py</strong> creates <code>hello-agent</code> the same way, with the Spanish prompt from <code>examples/ask.py</code>. Both sandboxes use <code>deploy/hi-python.policy.yaml</code>. Command 5 stays the smoke test (<code>print("ok")</code> in <code>model-check</code>); 6 and 7 are the agent that talks to the model.</p>
-    </article>
-    <article class="step">
-      <h2><span>10</span>OpenShell UI</h2>
-      <p>OpenShell 0.1.8 has no web console. Task <strong>10. OpenShell UI</strong> runs the official TUI (<code>openshell term</code>) inside ttyd on port 7681. The tools container declares a public endpoint named <code>openshell-ui</code>, so Dev Spaces creates a Route and the PORTS panel can open it in the Simple Browser. Restart the workspace once after that endpoint is in <code>devfile.yaml</code>. Leave the task running. Tab and Enter still move between gateways, providers, and sandboxes. Official notes: <a href="https://docs.nvidia.com/openshell/dev/how-it-works/sandboxes/overview">Manage Sandboxes</a>.</p>
-    </article>
-    <article class="step">
-      <h2><span>7</span>Clean</h2>
-      <p>Task <strong>8. Clean</strong> stops the SSH tunnel and deletes <code>minikube-vm</code>, <code>rhel-vm</code>, Ollama, and objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. It does not delete shared models or the workspace.</p>
-    </article>
-    <article class="step">
-      <h2><span>+</span>RHEL terminal</h2>
-      <p><strong>Start RHEL terminal</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code>. That guest is <code>rhel-vm</code>, cloned from the <code>rhel9</code> DataSource with preference <code>rhel.9</code>. The login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>, and the workspace key is the same one as the Fedora VM. This guest installs MicroShift instead of minikube. The catalog image has no subscription, so the boot script uses the public MicroShift 4.22 mirror and AlmaLinux 9 for the base packages.</p>
-      <p><strong>Connect MicroShift</strong> runs <code>scripts/sandbox-rhel-connect.sh</code>. Save a Red Hat pull secret as <code>~/.config/hello-openshell/openshift-pull-secret</code> first. The script copies that file, runs <code>scripts/microshift-guest-boot.sh</code> over SSH, and registers the gateway:</p>
-      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name microshift
-openshell gateway select microshift</code></pre>
-      <p>On 12 Nov 2026 the guest was RHEL 9.9 with Landlock ABI 6. The node became Ready, the CLI connected to OpenShell 0.1.8, and `model-check` printed `ok` after a 2Gi hostPath volume was bound to the workspace claim. There is no storage provisioner on this disk. The root disk has no LVM volume group, so the gateway volume is hostPath. The hostname <code>rhel-vm</code> is also the Service name; the boot script pins that name in <code>/etc/hosts</code> so the API server can reach the kubelet. From a laptop, <code>oc port-forward svc/rhel-vm 2222:22</code> and SSH to <code>127.0.0.1</code> on port 2222. Stop the Fedora VM first if the quota is full. Developer Sandbox still powers the guest off after one hour.</p>
-    </article>
-    <section class="note warn">
-      <p><strong>Gateway.</strong> A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and <code>agents.x-k8s.io</code> is not served, so Helm chart 0.1.8 cannot install in the project itself. The chart runs inside the OpenShift Virtualization VM's minikube, where those limits do not apply. Do not pass OpenShift SCC values into that minikube. A cluster you administer is the <a href="../openshift/index.html">OpenShift AI</a> module.</p>
-    </section>
-  </main>
-  <footer>
-    <div class="wrap">
-      <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
-      <p class="legal">Red Hat, OpenShift, and OpenShift Dev Spaces are trademarks of Red Hat, Inc. Those logo files are not included. NVIDIA, Podman, and Python marks are named on the <a href="../index.html">local page</a>.</p>
-    </div>
-  </footer>
+  <p><a href="../">Developer Sandbox</a></p>
 </body>
 </html>
