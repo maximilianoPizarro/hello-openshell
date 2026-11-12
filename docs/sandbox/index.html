@@ -3,7 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenShell on Developer Sandbox</title>
+  <title>Developer Sandbox</title>
+  <meta name="description" content="Run the OpenShell 0.1.8 CLI from Dev Spaces. The gateway lives on minikube inside an OpenShift Virtualization Fedora VM in Developer Sandbox.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Developer Sandbox">
+  <meta property="og:description" content="Run the OpenShell 0.1.8 CLI from Dev Spaces. The gateway lives on minikube inside an OpenShift Virtualization Fedora VM.">
+  <meta property="og:url" content="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
+  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/sandbox-architecture.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Developer Sandbox">
+  <meta name="twitter:description" content="Run the OpenShell 0.1.8 CLI from Dev Spaces. The gateway lives on minikube inside an OpenShift Virtualization Fedora VM.">
+  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/sandbox-architecture.jpg">
+  <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
+  <link rel="alternate" hreflang="en" href="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
+  <link rel="alternate" hreflang="es" href="https://maximilianopizarro.github.io/hello-openshell/es/sandbox/">
+  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/sandbox/">
   <link rel="stylesheet" href="../css/site.css">
 </head>
 <body>
@@ -33,6 +47,7 @@
     <section class="hero">
       <p class="kicker">Experimental · OpenShift Virtualization</p>
       <h1>Developer Sandbox</h1>
+      <p class="badge">Last checked: 2026-11-11 with OpenShell 0.1.8</p>
       <p class="lede">Open the repo in a workspace. Startup installs the OpenShell 0.1.8 CLI. The sandbox project cannot host the gateway, so OpenShift Virtualization runs a Fedora VM in that project and the VM runs minikube. From the workspace terminal, the CLI creates the sandbox on that gateway.</p>
       <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Open in Developer Sandbox</a></p>
     </section>
@@ -109,7 +124,8 @@ openshell sandbox create \
   </main>
   <footer>
     <div class="wrap">
-      <p>Red Hat, OpenShift, and OpenShift Dev Spaces are trademarks of Red Hat, Inc. Those logo files are not included. NVIDIA, Podman, and Python marks are named on the <a href="../index.html">local page</a>.</p>
+      <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
+      <p class="legal">Red Hat, OpenShift, and OpenShift Dev Spaces are trademarks of Red Hat, Inc. Those logo files are not included. NVIDIA, Podman, and Python marks are named on the <a href="../index.html">local page</a>.</p>
     </div>
   </footer>
 </body>

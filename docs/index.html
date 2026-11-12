@@ -3,7 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenShell locally with Podman</title>
+  <title>OpenShell on your machine</title>
+  <meta name="description" content="Run an AI agent in an OpenShell sandbox that talks only to the Ollama model you allow. Podman guide for Linux, macOS, and Windows. About 15 minutes.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="OpenShell on your machine">
+  <meta property="og:description" content="Run an AI agent in an OpenShell sandbox that talks only to the Ollama model you allow. Podman guide for Linux, macOS, and Windows.">
+  <meta property="og:url" content="https://maximilianopizarro.github.io/hello-openshell/">
+  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/local-architecture.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="OpenShell on your machine">
+  <meta name="twitter:description" content="Run an AI agent in an OpenShell sandbox that talks only to the Ollama model you allow. Podman guide for Linux, macOS, and Windows.">
+  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/local-architecture.jpg">
+  <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/">
+  <link rel="alternate" hreflang="en" href="https://maximilianopizarro.github.io/hello-openshell/">
+  <link rel="alternate" hreflang="es" href="https://maximilianopizarro.github.io/hello-openshell/es/">
+  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/">
   <link rel="stylesheet" href="css/site.css">
 </head>
 <body>
@@ -31,77 +45,111 @@
   </header>
   <main class="wrap">
     <section class="hero">
-      <p class="kicker">Linux · macOS · Windows</p>
+      <p class="kicker">Works on Linux, macOS, and Windows</p>
       <h1>OpenShell on your machine</h1>
-      <p class="lede">A Podman sandbox calls Ollama <code>llama3.2:1b</code> through <code>host.openshell.internal:11434</code>. The gateway is OpenShell 0.1.8. The same client is <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/examples/ask.py">examples/ask.py</a>.</p>
+      <p class="badge">Last checked with OpenShell 0.1.8</p>
+      <p class="lede">Run an AI agent inside an isolated sandbox that can talk only to the model you allow. In this guide you start Ollama with Podman, connect OpenShell, and confirm the sandbox reaches the model through a network policy. Estimated time: 15 minutes. Requirements: Podman and 4 GiB of free RAM.</p>
     </section>
     <div class="cards">
-      <a class="card" href="index.html"><h2>Local</h2><p>Podman on Linux, macOS, or Windows. 3 GiB cap.</p></a>
-      <a class="card" href="sandbox/index.html"><h2>Developer Sandbox</h2><p>Dev Spaces CLI. The gateway runs on minikube in an OpenShift Virtualization VM.</p></a>
-      <a class="card" href="openshift/index.html"><h2>OpenShift AI</h2><p>Admin cluster reference. One GPU, token stays in the gateway.</p></a>
-      <a class="card" href="cloudshell/index.html"><h2>Cloud Shell</h2><p>Gateway on minikube. This kernel cannot run a sandbox.</p></a>
+      <a class="card" href="index.html"><h2>Local</h2><p>Run everything on your computer with Podman. Checked on Linux, macOS, and Windows.</p></a>
+      <a class="card" href="sandbox/index.html"><h2>Developer Sandbox</h2><p>Use the CLI from Dev Spaces. The gateway runs on minikube inside an OpenShift Virtualization VM.</p></a>
+      <a class="card" href="openshift/index.html"><h2>OpenShift AI</h2><p>Admin reference: deploy a model on a cluster with one GPU. The token never leaves the gateway.</p></a>
+      <a class="card" href="cloudshell/index.html"><h2>Cloud Shell</h2><p>Partial path: the gateway runs on minikube, but Cloud Shell cannot run a sandbox (kernel limit).</p></a>
     </div>
 
-    <figure>
-      <img src="assets/diagrams/local-architecture.jpg" alt="CLI, gateway, Podman sandbox, supervisor, and Ollama">
-      <figcaption>The sandbox has no network of its own. The supervisor dials Ollama.</figcaption>
-    </figure>
+    <section class="note" id="how-it-works">
+      <h2>How it works</h2>
+      <p>A Podman sandbox calls Ollama <code>llama3.2:1b</code> through <code>host.openshell.internal:11434</code>. The gateway is OpenShell 0.1.8. The same client is <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/examples/ask.py">examples/ask.py</a>.</p>
+      <figure>
+        <img src="assets/diagrams/local-architecture.jpg" alt="CLI, gateway, Podman sandbox, supervisor, and Ollama">
+        <figcaption>The sandbox has no network of its own. The supervisor connects to Ollama.</figcaption>
+      </figure>
+    </section>
+
+    <section class="glossary" id="glossary">
+      <h2>Glossary</h2>
+      <dl>
+        <dt>Sandbox</dt>
+        <dd>Isolated container where your code runs, without its own network.</dd>
+        <dt>Gateway</dt>
+        <dd>Service that creates and manages sandboxes.</dd>
+        <dt>Supervisor</dt>
+        <dd>Process that decides which outbound connections leave the sandbox.</dd>
+        <dt>Profile / Provider</dt>
+        <dd>Policy profile and registration of the inference backend (Ollama).</dd>
+      </dl>
+    </section>
 
     <article class="step" id="quickstart">
-      <h2><span>0</span>Quickstart</h2>
+      <h2><span aria-hidden="true">1</span>Quickstart</h2>
+      <p><strong>What it does:</strong> clones the repo, starts Ollama, installs the gateway, runs one ask, then cleans up.</p>
       <pre><code>git clone https://github.com/maximilianoPizarro/hello-openshell
 cd hello-openshell
 make up
 make gateway
 make ask
 make down</code></pre>
-      <p><code>make up</code> starts Ollama and pulls the model. <code>make gateway</code> installs OpenShell 0.1.8. <code>make ask</code> runs <code>examples/ask.py</code> in the hardened Python sandbox.</p>
+      <p><code>make up</code> starts Ollama and pulls the model. <code>make gateway</code> installs OpenShell 0.1.8. <code>make ask</code> runs <code>examples/ask.py</code> in the hardened Python sandbox. You should see one Spanish sentence about what a sandbox is.</p>
+      <p><strong>Expected result:</strong> Status Connected and Version 0.1.8 after <code>make gateway</code>; a short Spanish reply after <code>make ask</code>.</p>
+      <p><strong>If it fails:</strong> see <a href="#failures">When something fails</a>.</p>
     </article>
 
     <article class="step" id="platforms">
-      <h2><span>1</span>Platforms</h2>
+      <h2><span aria-hidden="true">2</span>Platforms</h2>
+      <p><strong>What it does:</strong> shows how the host, the Podman machine, and the sandbox reach Ollama.</p>
       <table>
         <thead>
           <tr><th>Platform</th><th>Podman</th><th>Host URL for Ollama</th><th>Gateway</th></tr>
         </thead>
         <tbody>
           <tr><td>Linux</td><td>Native</td><td><code>http://127.0.0.1:11434</code></td><td>On the host</td></tr>
-          <tr><td>macOS</td><td><code>podman machine</code></td><td>Published port on localhost</td><td>Inside the machine</td></tr>
-          <tr><td>Windows</td><td><code>podman machine</code> on WSL2</td><td>localhost with mirrored networking, or machine IPv4 with NAT</td><td>Inside the machine</td></tr>
+          <tr><td>macOS</td><td><code>podman machine</code></td><td>Published port on localhost</td><td>Inside the Podman machine</td></tr>
+          <tr><td>Windows</td><td><code>podman machine</code> on WSL2</td><td>localhost with mirrored networking, or machine IPv4 with NAT</td><td>Inside the Podman machine</td></tr>
         </tbody>
       </table>
-      <p><code>scripts/ollama-url.sh</code> prints the host URL. The sandbox always uses <code>host.openshell.internal:11434</code>. On Windows, <code>networkingMode=mirrored</code> in <code>%USERPROFILE%\.wslconfig</code> makes localhost work from the host.</p>
+      <p><code>scripts/ollama-url.sh</code> prints the host URL. The sandbox always uses <code>host.openshell.internal:11434</code>. On Windows, <code>networkingMode=mirrored</code> in <code>%USERPROFILE%\.wslconfig</code> makes localhost work from the host. You need the Podman machine started and cgroup v2 enabled. Inside <code>podman machine ssh</code> you are root.</p>
       <figure>
-        <img src="assets/diagrams/local-windows-net.jpg" alt="Host, machine, and sandbox reach Ollama on different addresses">
-        <figcaption>Inside the machine, <code>127.0.0.1:11434</code> answers. The sandbox name is <code>host.openshell.internal</code>.</figcaption>
+        <img src="assets/diagrams/local-windows-net.jpg" alt="Host, Podman machine, and sandbox reach Ollama on different addresses">
+        <figcaption>Inside the Podman machine, <code>127.0.0.1:11434</code> answers. The sandbox name is <code>host.openshell.internal</code>.</figcaption>
       </figure>
+      <p><strong>If it fails:</strong> Platform or Network rows in <a href="#failures">When something fails</a>.</p>
     </article>
 
     <article class="step" id="profile">
-      <h2><span>2</span>Import the Ollama profile</h2>
+      <h2><span aria-hidden="true">3</span>Import the Ollama profile</h2>
+      <p><strong>What it does:</strong> registers which hosts and ports the sandbox may use, then creates the Ollama provider.</p>
       <pre><code>openshell profile lint -f deploy/ollama.profile.yaml
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
+      <p><strong>Expected result:</strong> Profile <code>ollama</code> imported and provider <code>ollama</code> listed.</p>
+      <p><strong>If it fails:</strong> Policy rows in <a href="#failures">When something fails</a>.</p>
     </article>
 
     <article class="step" id="check">
-      <h2><span>3</span>List models from a sandbox</h2>
+      <h2><span aria-hidden="true">4</span>List models from a sandbox</h2>
+      <p><strong>What it does:</strong> creates a short-lived sandbox and lists models through the allowed host.</p>
       <pre><code>openshell sandbox create \
   --name model-check \
   --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
   --policy deploy/hi-python.policy.yaml \
   -- /usr/bin/python3.12 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'</code></pre>
-      <p>Expected JSON includes <code>llama3.2:1b</code>. The image user is UID 65532 and its primary group is 0, so the policy sets both user and group to 65532.</p>
+      <p>The image user is UID 65532 and its primary group is 0, so the policy sets both user and group to 65532.</p>
+      <p><strong>Expected result:</strong> JSON that includes <code>llama3.2:1b</code>.</p>
+      <p><strong>If it fails:</strong> Model, Image, or Policy rows in <a href="#failures">When something fails</a>.</p>
     </article>
 
     <article class="step" id="agent">
-      <h2><span>4</span>Ask with ask.py</h2>
+      <h2><span aria-hidden="true">5</span>Ask with ask.py</h2>
+      <p><strong>What it does:</strong> runs <code>examples/ask.py</code> in a sandbox so the policy can allow the POST and the supervisor can reach Ollama.</p>
       <figure>
-        <img src="assets/diagrams/local-flow.jpg" alt="ask.py POST, policy ALLOW, supervisor dial, model reply">
-        <figcaption>The policy allows the POST. The value <code>fake</code> is visible to the process. It is not a real key.</figcaption>
+        <img src="assets/diagrams/local-flow.jpg" alt="ask.py POST, policy ALLOW, supervisor connection, model reply">
+        <figcaption>The policy allows the POST. The supervisor connects to Ollama.</figcaption>
       </figure>
+      <section class="note warn">
+        <p><strong>Important.</strong> <code>fake</code> is a placeholder: the client requires a key, but Ollama does not validate it. The value is visible to the process. For a real credential, create a provider and attach it with <code>--provider</code> instead of <code>--env</code>.</p>
+      </section>
       <pre><code>export MODEL_NAME=llama3.2:1b
 openshell sandbox create \
   --name hello-agent \
@@ -112,21 +160,60 @@ openshell sandbox create \
   --env "MODEL_NAME=${MODEL_NAME}" \
   --env OPENAI_API_KEY=fake \
   -- /usr/bin/python3.12 -c "$(cat examples/ask.py)"</code></pre>
+      <p><strong>Expected result:</strong> one Spanish sentence that explains what a sandbox is and why an agent should run inside one.</p>
+      <p><strong>If it fails:</strong> Gateway, Image, or Policy rows in <a href="#failures">When something fails</a>.</p>
     </article>
 
     <article class="step" id="down">
-      <h2><span>5</span>Tear down</h2>
+      <h2><span aria-hidden="true">6</span>Clean up</h2>
+      <p><strong>What it does:</strong> stops the lab and removes the downloaded models when you use <code>-v</code>.</p>
       <pre><code>make down</code></pre>
-      <p>Or: delete the sandboxes, then <code>podman compose -f deploy/compose.yaml down -v</code>. That volume is named <code>deploy_ollama</code>.</p>
+      <p>Or delete the sandboxes, then run <code>podman compose -f deploy/compose.yaml down -v</code>. That also deletes the volume <code>deploy_ollama</code>, including the downloaded models.</p>
+      <p><strong>Expected result:</strong> no running Ollama container and no active sandboxes for this lab.</p>
+    </article>
+
+    <article class="step" id="failures">
+      <h2>When something fails</h2>
+      <table>
+        <thead>
+          <tr><th>Category</th><th>What you see</th><th>Where to look</th></tr>
+        </thead>
+        <tbody>
+          <tr id="fail-platform"><td>Platform</td><td><code>podman</code> cannot connect</td><td><code>podman machine start</code> on macOS/Windows. On Linux, start the Podman socket.</td></tr>
+          <tr id="fail-memory"><td>Memory</td><td>The Ollama container is killed</td><td><code>podman stats ollama</code>. Raise <code>mem_limit</code> in <code>deploy/compose.yaml</code> to <code>4g</code>. Stay on <code>llama3.2:1b</code> when RAM is tight.</td></tr>
+          <tr id="fail-model"><td>Model</td><td><code>/v1/models</code> has no <code>llama3.2:1b</code></td><td><code>podman exec ollama ollama pull llama3.2:1b</code> is still running. <code>podman logs ollama</code>.</td></tr>
+          <tr id="fail-network"><td>Network (Windows NAT)</td><td><code>curl</code> to <code>127.0.0.1:11434</code> from Windows returns connection refused</td><td>Use <code>make ollama-url</code>, or switch WSL to <code>networkingMode=mirrored</code>.</td></tr>
+          <tr id="fail-gateway"><td>Gateway</td><td>The gateway creates no containers</td><td><code>socket_path</code> must be the daemon that lists <code>ollama</code>.</td></tr>
+          <tr id="fail-image"><td>Image</td><td>Sandbox exits naming Landlock or seccomp</td><td>The kernel refused the filter. OpenShell 0.1.8 needs that check.</td></tr>
+          <tr id="fail-policy-binary"><td>Policy</td><td><code>no matching policy</code> names a binary</td><td>On the hardened image the interpreter is <code>/usr/bin/python3.12</code>. Update the profile and keep <code>resource_version</code>.</td></tr>
+          <tr id="fail-policy-group"><td>Policy</td><td><code>configure an explicit workload group</code></td><td>The image user <code>65532</code> has primary group <code>0</code>. Pass <code>--policy deploy/hi-python.policy.yaml</code>.</td></tr>
+          <tr id="fail-policy-loopback"><td>Policy</td><td><code>resolves to always-blocked address</code></td><td>The sandbox URL used loopback. Use <code>host.openshell.internal</code>.</td></tr>
+        </tbody>
+      </table>
+    </article>
+
+    <article class="step" id="done">
+      <h2>What you did</h2>
+      <p>You started Ollama, connected an OpenShell 0.1.8 gateway, and ran an agent in a sandbox that could reach only the model you allowed.</p>
+    </article>
+
+    <article class="step" id="next">
+      <h2>Next</h2>
+      <ul>
+        <li>Change the model in <code>MODEL_NAME</code> and pull it with Ollama.</li>
+        <li>Edit the policy in <code>deploy/hi-python.policy.yaml</code> or the profile in <code>deploy/ollama.profile.yaml</code>.</li>
+        <li>Try the <a href="sandbox/index.html">Developer Sandbox</a> track or the <a href="openshift/index.html">OpenShift AI</a> admin reference.</li>
+      </ul>
     </article>
 
     <section class="note">
-      <p>Full command notes and the failure table are in the <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/README.md">English README</a>. Stack used while writing: <a href="tested-environments.md">tested-environments.md</a>. Official docs: <a href="https://docs.nvidia.com/openshell/latest/about/installation">installation</a>, <a href="https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes">runtimes</a>, <a href="https://docs.nvidia.com/openshell/how-it-works/inference">inference</a>, <a href="https://github.com/ollama/ollama/blob/main/docs/openai.md">Ollama OpenAI API</a>.</p>
+      <p>Versions used while writing this guide: <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/docs/tested-environments.md">tested environments on GitHub</a>. Official docs: <a href="https://docs.nvidia.com/openshell/latest/about/installation">OpenShell installation guide</a>, <a href="https://docs.nvidia.com/openshell/latest/how-it-works/sandboxes/runtimes">compatible sandbox runtimes</a>, <a href="https://docs.nvidia.com/openshell/how-it-works/inference">how inference works</a>, <a href="https://github.com/ollama/ollama/blob/main/docs/openai.md">Ollama OpenAI API</a>.</p>
     </section>
   </main>
   <footer>
     <div class="wrap">
-      <p>Independent guide. NVIDIA and OpenShell are trademarks of NVIDIA Corporation. The wordmark names OpenShell and does not imply endorsement. Podman is a trademark of Red Hat, Inc. The Podman logo is the project file from the Podman repository. Python and the Python logo are trademarks of the Python Software Foundation. Red Hat and OpenShift are trademarks of Red Hat, Inc.</p>
+      <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
+      <p class="legal">NVIDIA and OpenShell are trademarks of NVIDIA Corporation. Podman is a trademark of Red Hat, Inc. The Podman logo is the project file from the Podman repository. Python and the Python logo are trademarks of the Python Software Foundation. Red Hat and OpenShift are trademarks of Red Hat, Inc.</p>
     </div>
   </footer>
 </body>

@@ -3,7 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenShell en minikube desde Cloud Shell</title>
+  <title>OpenShell desde Cloud Shell</title>
+  <meta name="description" content="Instalá el gateway de OpenShell en minikube desde Google Cloud Shell. El sandbox no corre: este kernel no tiene CONFIG_SECURITY_LANDLOCK.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="OpenShell desde Cloud Shell">
+  <meta property="og:description" content="Instalá el gateway de OpenShell en minikube desde Google Cloud Shell. El sandbox no corre: este kernel no tiene Landlock.">
+  <meta property="og:url" content="https://maximilianopizarro.github.io/hello-openshell/es/cloudshell/">
+  <meta property="og:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/local-architecture.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="OpenShell desde Cloud Shell">
+  <meta name="twitter:description" content="Instalá el gateway de OpenShell en minikube desde Google Cloud Shell. El sandbox no corre: este kernel no tiene Landlock.">
+  <meta name="twitter:image" content="https://maximilianopizarro.github.io/hello-openshell/assets/diagrams/local-architecture.jpg">
+  <link rel="canonical" href="https://maximilianopizarro.github.io/hello-openshell/es/cloudshell/">
+  <link rel="alternate" hreflang="en" href="https://maximilianopizarro.github.io/hello-openshell/cloudshell/">
+  <link rel="alternate" hreflang="es" href="https://maximilianopizarro.github.io/hello-openshell/es/cloudshell/">
+  <link rel="alternate" hreflang="x-default" href="https://maximilianopizarro.github.io/hello-openshell/cloudshell/">
   <link rel="stylesheet" href="../../css/site.css">
 </head>
 <body>
@@ -33,6 +47,7 @@
     <section class="hero">
       <p class="kicker">minikube · Cloud Shell</p>
       <h1>OpenShell desde Cloud Shell</h1>
+      <p class="badge">Última verificación: 2026-11-11 con OpenShell 0.1.8</p>
       <p class="lede">Cloud Shell ya trae minikube. El clúster corre en esa VM y no crea un GKE. El gateway levanta con containerd 2. El sandbox no: este kernel no tiene <code>CONFIG_SECURITY_LANDLOCK</code>.</p>
       <p><a href="https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/hello-openshell&amp;cloudshell_git_branch=main&amp;cloudshell_tutorial=docs/cloudshell-tutorial.md&amp;show=terminal"><img alt="Open in Cloud Shell" src="https://gstatic.com/cloudssh/images/open-btn.svg" height="36"></a></p>
     </section>
@@ -111,7 +126,8 @@ kubectl logs -n openshell default--model-check -c agent</code></pre>
   </main>
   <footer>
     <div class="wrap">
-      <p>Guía independiente. El wordmark de NVIDIA nombra a OpenShell y no implica respaldo. Las marcas de Podman y Python están en la <a href="../index.html">página local</a>.</p>
+      <p>Guía independiente, no afiliada ni respaldada por NVIDIA, Red Hat ni Python Software Foundation.</p>
+      <p class="legal">NVIDIA y OpenShell son marcas de NVIDIA Corporation. Las marcas de Podman y Python están en la <a href="../index.html">página local</a>.</p>
     </div>
   </footer>
 </body>
