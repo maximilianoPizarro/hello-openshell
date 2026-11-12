@@ -64,7 +64,7 @@ commands:
       component: tools
       commandLine: bash scripts/sandbox-vm-up.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "A2. Start minikube VM"
+      label: "A2. Start minikube VM and Ollama"
       group:
         kind: run
         isDefault: false
@@ -136,7 +136,7 @@ commands:
       component: tools
       commandLine: bash scripts/sandbox-rhel-up.sh
       workingDir: ${PROJECT_SOURCE}
-      label: "B2. Start RHEL VM"
+      label: "B2. Start RHEL VM and Ollama"
       group:
         kind: run
         isDefault: false

@@ -28,7 +28,9 @@ ensure_profile() {
   if openshell_cmd profile get ollama >/dev/null 2>&1; then
     return
   fi
-  openshell_cmd profile lint -f "$1/$PROFILE"
+  if ! openshell_cmd profile lint -f "$1/$PROFILE"; then
+    echo "profile lint failed; trying import if the CLI already has ollama."
+  fi
   openshell_cmd profile import -f "$1/$PROFILE"
 }
 

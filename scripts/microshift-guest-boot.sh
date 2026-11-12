@@ -159,12 +159,22 @@ spec:
 EOF
   fi
   if ! kube -n openshell get statefulset openshell >/dev/null 2>&1; then
+    NODE_IP="$(kube get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || true)"
+    HELM_SET=(--set dataStorageClass=manual)
+    if [ -n "${NODE_IP}" ]; then
+      echo "${NODE_IP}" > "${MARKER}/host-gateway-ip"
+      HELM_SET+=(--set "server.hostGatewayIP=${NODE_IP}")
+      echo "OpenShell hostGatewayIP=${NODE_IP}"
+    fi
+    if ! grep -qE '[[:space:]]host\.openshell\.internal([[:space:]]|$)' /etc/hosts; then
+      echo "127.0.0.1 host.openshell.internal" >> /etc/hosts
+    fi
     helm upgrade --install openshell \
       oci://ghcr.io/nvidia/openshell/helm-chart \
       --version 0.1.8 \
       --namespace openshell --create-namespace \
       --values "${VALUES}" \
-      --set dataStorageClass=manual
+      "${HELM_SET[@]}"
   fi
   local uid
   uid="$(kube get namespace openshell -o jsonpath='{.metadata.annotations.openshift\.io/sa\.scc\.uid-range}' | cut -d/ -f1)"

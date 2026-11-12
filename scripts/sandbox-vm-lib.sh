@@ -57,8 +57,8 @@ sandbox_gateway_vm() {
 
 sandbox_gateway_start_hint() {
   case "${SANDBOX_GATEWAY:-minikube}" in
-    microshift) echo "B1. Clean, then B2. Start RHEL VM" ;;
-    *) echo "A1. Clean, then A2. Start minikube VM" ;;
+    microshift) echo "B1. Clean, then B2. Start RHEL VM and Ollama" ;;
+    *) echo "A1. Clean, then A2. Start minikube VM and Ollama" ;;
   esac
 }
 
@@ -230,10 +230,183 @@ RestartSec=2
 [Install]
 WantedBy=multi-user.target
 UNIT
+if ! grep -qE '[[:space:]]host\.openshell\.internal([[:space:]]|$)' /etc/hosts; then
+  echo "127.0.0.1 host.openshell.internal" >> /etc/hosts
+fi
+if command -v firewall-cmd >/dev/null 2>&1; then
+  firewall-cmd --add-port=11434/tcp --permanent >/dev/null 2>&1 || true
+  firewall-cmd --reload >/dev/null 2>&1 || true
+fi
+if command -v iptables >/dev/null 2>&1; then
+  iptables -C INPUT -p tcp --dport 11434 -j ACCEPT >/dev/null 2>&1 || \
+    iptables -I INPUT -p tcp --dport 11434 -j ACCEPT || true
+fi
 systemctl daemon-reload
 systemctl enable hello-openshell-ollama.service
 systemctl restart hello-openshell-ollama.service
 sleep 1
 python3 -c 'import socket; socket.create_connection(("127.0.0.1", 11434), 5)'
 EOF
+}
+
+# Apply CPU Ollama while the guest disk clones, then wait before Ask.
+sandbox_begin_ollama() {
+  local root="${1:?}"
+  local pid
+  mkdir -p "${SANDBOX_VM_CFG}"
+  echo "Starting CPU Ollama in this project so llama3.2:1b is ready before Ask."
+  bash "${root}/scripts/sandbox-ollama-up.sh" >"${SANDBOX_VM_CFG}/ollama-up.log" 2>&1 &
+  pid=$!
+  echo "${pid}" > "${SANDBOX_VM_CFG}/ollama-up.pid"
+  echo "Ollama pid ${pid}. Log: ${SANDBOX_VM_CFG}/ollama-up.log"
+  sleep 8
+  if kill -0 "${pid}" 2>/dev/null; then
+    return 0
+  fi
+  if wait "${pid}"; then
+    rm -f "${SANDBOX_VM_CFG}/ollama-up.pid"
+    echo "Ollama is already ready."
+    return 0
+  fi
+  echo "Ollama failed to start with the VM."
+  cat "${SANDBOX_VM_CFG}/ollama-up.log" || true
+  return 1
+}
+
+sandbox_finish_ollama() {
+  local root="${1:?}"
+  local pidfile="${SANDBOX_VM_CFG}/ollama-up.pid"
+  local pid=""
+  if [ -f "${pidfile}" ]; then
+    pid="$(cat "${pidfile}")"
+  fi
+  if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+    echo "Waiting for Ollama started with the VM..."
+    if wait "${pid}"; then
+      rm -f "${pidfile}"
+      echo "Ollama is ready."
+      return 0
+    fi
+    echo "Background Ollama failed. Retrying in the foreground."
+    tail -n 50 "${SANDBOX_VM_CFG}/ollama-up.log" || true
+  fi
+  bash "${root}/scripts/sandbox-ollama-up.sh"
+  rm -f "${pidfile}"
+}
+
+sandbox_openshell_gateway_connected() {
+  local name="${1:-${SANDBOX_GATEWAY:-minikube}}"
+  export PATH="${HOME}/.local/bin:${PATH}"
+  command -v openshell >/dev/null 2>&1 || return 1
+  openshell gateway select "${name}" >/dev/null 2>&1 || return 1
+  openshell status 2>/dev/null | grep -qi connected
+}
+
+# Re-adding a gateway wipes server-side profiles. Keep the existing entry
+# when the tunnel is already up.
+sandbox_openshell_register_gateway() {
+  local name="${1:?}"
+  export PATH="${HOME}/.local/bin:${PATH}"
+  if sandbox_openshell_gateway_connected "${name}"; then
+    echo "Gateway ${name} already connected."
+    openshell status
+    return 0
+  fi
+  if openshell gateway add https://127.0.0.1:8080 --local --name "${name}"; then
+    :
+  else
+    openshell gateway remove "${name}" >/dev/null 2>&1 || true
+    openshell gateway add https://127.0.0.1:8080 --local --name "${name}"
+  fi
+  openshell gateway select "${name}"
+  openshell status
+}
+
+sandbox_openshell_ensure_ollama() {
+  local root="${1:?}"
+  local profile="${root}/deploy/ollama.profile.yaml"
+  local lint_file
+  export PATH="${HOME}/.local/bin:${PATH}"
+  openshell gateway select "${SANDBOX_GATEWAY:-minikube}"
+  if openshell profile get ollama >/dev/null 2>&1; then
+    echo "profile ollama is on this gateway."
+  else
+    lint_file="$(mktemp)"
+    if ! openshell profile lint -f "${profile}" >"${lint_file}" 2>&1; then
+      if grep -qi "already exists" "${lint_file}"; then
+        echo "CLI already has profile ollama. Re-importing onto this gateway."
+        openshell profile delete ollama >/dev/null 2>&1 || true
+        openshell profile rm ollama >/dev/null 2>&1 || true
+      else
+        cat "${lint_file}"
+        rm -f "${lint_file}"
+        return 1
+      fi
+    fi
+    rm -f "${lint_file}"
+    openshell profile import -f "${profile}"
+  fi
+  if openshell provider get ollama >/dev/null 2>&1; then
+    echo "provider ollama exists."
+  else
+    openshell provider create --name ollama --type ollama
+  fi
+}
+
+# Kubernetes sandboxes have no DNS. OpenShell injects host.openshell.internal
+# only when server.hostGatewayIP is set (the IP pods use to reach the guest).
+sandbox_vm_ensure_host_gateway_ip() {
+  sandbox_gateway_ssh sudo -n bash -s <<'EOF'
+set -eu
+MARKER=/var/lib/hello-openshell
+mkdir -p "${MARKER}"
+ip=""
+if [ -x /usr/local/bin/minikube ]; then
+  export HOME=/root KUBECONFIG=/root/.kube/config PATH=/usr/local/bin:/usr/bin:/bin
+  kube() { kubectl "$@"; }
+  ip="$(minikube ssh -- 'getent ahostsv4 host.minikube.internal 2>/dev/null | awk "{print \$1; exit}"' 2>/dev/null | tr -d '\r' | head -1 || true)"
+  if [ -z "${ip}" ]; then
+    ip="$(ip -4 addr show podman0 2>/dev/null | awk '/inet / {print $2; exit}' | cut -d/ -f1 || true)"
+  fi
+else
+  export HOME=/root PATH=/usr/local/bin:/usr/bin:/bin
+  KUBECONFIG="$(find /var/lib/microshift/resources -name kubeconfig 2>/dev/null | head -1)"
+  export KUBECONFIG
+  kube() { oc "$@"; }
+  ip="$(kube get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || true)"
+  if [ -z "${ip}" ]; then
+    ip="$(hostname -I | awk '{print $1}')"
+  fi
+fi
+if [ -z "${ip}" ]; then
+  echo "Could not detect the host IP for host.openshell.internal."
+  exit 1
+fi
+echo "${ip}" > "${MARKER}/host-gateway-ip"
+chmod 644 "${MARKER}/host-gateway-ip"
+current="$(kube -n openshell get statefulset openshell -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}' 2>/dev/null | awk -F= '$1=="OPENSHELL_HOST_GATEWAY_IP"{print $2; exit}')"
+if [ "${current}" = "${ip}" ]; then
+  echo "OpenShell hostGatewayIP is already ${ip}."
+  exit 0
+fi
+echo "Setting OPENSHELL_HOST_GATEWAY_IP=${ip} so sandbox pods resolve host.openshell.internal."
+kube -n openshell set env statefulset/openshell "OPENSHELL_HOST_GATEWAY_IP=${ip}"
+kube -n openshell rollout status statefulset/openshell --timeout=180s || true
+EOF
+}
+
+sandbox_guest_host_gateway_ip() {
+  sandbox_gateway_ssh "cat /var/lib/hello-openshell/host-gateway-ip 2>/dev/null || true" | tr -d '\r\n'
+}
+
+sandbox_openshell_prepare_ask() {
+  local root="${1:?}"
+  sandbox_vm_ensure_ollama_proxy
+  if ! sandbox_gateway_ssh 'python3 -c "import socket; socket.create_connection((\"127.0.0.1\", 11434), 5)"'; then
+    echo "Guest :11434 did not accept connections. The sandbox cannot reach Ollama."
+    sandbox_gateway_ssh 'sudo -n systemctl status hello-openshell-ollama --no-pager' || true
+    return 1
+  fi
+  sandbox_vm_ensure_host_gateway_ip
+  sandbox_openshell_ensure_ollama "${root}"
 }

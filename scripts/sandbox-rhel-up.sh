@@ -27,6 +27,8 @@ echo
 echo "=== quota ==="
 oc get quota
 echo
+sandbox_begin_ollama "${ROOT}"
+echo
 if ! oc get datasource rhel9 -n openshift-virtualization-os-images >/dev/null 2>&1; then
   echo "The rhel9 DataSource is not readable in openshift-virtualization-os-images."
   exit 1
@@ -136,4 +138,6 @@ echo "From a laptop, the cluster DNS name does not resolve. Forward the service,
 echo "  oc port-forward svc/${VM_NAME} 2222:22"
 echo "  ssh -i ${SANDBOX_VM_KEY} -p 2222 -o IdentitiesOnly=yes cloud-user@127.0.0.1"
 echo
+sandbox_finish_ollama "${ROOT}"
+echo "CPU Ollama (llama3.2:1b) is ready in this project. Connect (B3) installs the guest proxy."
 oc get vm,dv,vmi,svc "${VM_NAME}" 2>/dev/null || oc get vm,dv,svc -l app.kubernetes.io/name=rhel

@@ -18,7 +18,20 @@ systemctl enable --now podman.socket || true
 minikube start --driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g --force
 kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
-helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart --version 0.1.8 -n openshell --create-namespace
+HOST_GW="$(minikube ssh -- 'getent ahostsv4 host.minikube.internal 2>/dev/null | awk "{print \$1; exit}"' 2>/dev/null | tr -d '\r' | head -1 || true)"
+if [ -z "${HOST_GW}" ]; then
+  HOST_GW="$(ip -4 addr show podman0 2>/dev/null | awk '/inet / {print $2; exit}' | cut -d/ -f1 || true)"
+fi
+HELM_SET=()
+if [ -n "${HOST_GW}" ]; then
+  echo "${HOST_GW}" > /var/lib/hello-openshell/host-gateway-ip
+  HELM_SET=(--set "server.hostGatewayIP=${HOST_GW}")
+  echo "OpenShell hostGatewayIP=${HOST_GW}"
+fi
+if ! grep -qE '[[:space:]]host\.openshell\.internal([[:space:]]|$)' /etc/hosts; then
+  echo "127.0.0.1 host.openshell.internal" >> /etc/hosts
+fi
+helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart --version 0.1.8 -n openshell --create-namespace "${HELM_SET[@]}"
 kubectl -n openshell rollout status statefulset/openshell --timeout=300s
 install -d -o fedora -g fedora /home/fedora/openshell-client
 for k in ca.crt tls.crt tls.key; do

@@ -25,6 +25,8 @@ echo
 echo "=== quota ==="
 oc get quota
 echo
+sandbox_begin_ollama "${ROOT}"
+echo
 if ! oc get datasource fedora -n openshift-virtualization-os-images >/dev/null 2>&1; then
   echo "The fedora DataSource is not readable in openshift-virtualization-os-images."
   echo "The VM manifest still references it. If create fails, the boot source is missing."
@@ -127,10 +129,13 @@ fi
 
 echo
 echo "The guest clones a 30Gi Fedora disk, then cloud-init installs minikube."
+echo "CPU Ollama (llama3.2:1b) starts in this project at the same time so Ask does not wait on the pull."
 echo "Developer Sandbox stops Linux VMs after one hour. Run this task again if that happens."
 echo
 if [ "${SANDBOX_VM_CONNECT:-1}" = "0" ]; then
+  sandbox_finish_ollama "${ROOT}"
   oc get vm,dv,vmi,svc -l app.kubernetes.io/part-of=hello-openshell
   exit 0
 fi
-exec bash "${ROOT}/scripts/sandbox-vm-connect.sh"
+bash "${ROOT}/scripts/sandbox-vm-connect.sh"
+sandbox_finish_ollama "${ROOT}"

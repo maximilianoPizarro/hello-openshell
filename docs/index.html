@@ -94,7 +94,7 @@
 
     <article class="step">
       <h2><span>2</span>Devfile commands</h2>
-      <p>These are the <code>exec</code> commands under <strong>Terminal → Run Task…</strong>. Run <strong>A1. Clean</strong> or <strong>B1. Clean</strong> before you start a path. <strong>A2. Start minikube VM</strong> already runs connect at the end. Restart the workspace once so the <code>openshell-ui</code> endpoint exists. Task names stay in English because that is the IDE text.</p>
+      <p>These are the <code>exec</code> commands under <strong>Terminal → Run Task…</strong>. Run <strong>A1. Clean</strong> or <strong>B1. Clean</strong> before you start a path. <strong>A2. Start minikube VM and Ollama</strong> starts CPU Ollama in this project and then runs connect. Restart the workspace once so the <code>openshell-ui</code> endpoint exists. Task names stay in English because that is the IDE text.</p>
       <pre><code>1.  bash scripts/install-openshell-cli.sh
 2.  bash scripts/sandbox-status.sh
 A1. bash scripts/sandbox-down.sh
@@ -116,8 +116,8 @@ B8. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh</code></pre>
     </article>
 
     <article class="step" id="fedora">
-      <h2><span>A2</span>Start the Fedora VM</h2>
-      <p><code>scripts/sandbox-vm-up.sh</code> prints <code>oc whoami</code> and the quota, then applies <code>deploy/sandbox-minikube-vm.yaml</code>. OpenShift Virtualization clones the <code>fedora</code> DataSource from <code>openshift-virtualization-os-images</code>. There is no custom image. <code>runStrategy</code> is <code>Manual</code>. Inline cloud-init names <code>fedora</code> and curls <code>scripts/minikube-guest-boot.sh</code>.</p>
+      <h2><span>A2</span>Start the Fedora VM and Ollama</h2>
+      <p><code>scripts/sandbox-vm-up.sh</code> prints <code>oc whoami</code> and the quota, then starts CPU Ollama (<code>llama3.2:1b</code>, 4Gi) in this project and applies <code>deploy/sandbox-minikube-vm.yaml</code>. The model pull runs while the guest disk clones, so A5 / A6 do not wait on that image. OpenShift Virtualization clones the <code>fedora</code> DataSource from <code>openshift-virtualization-os-images</code>. There is no custom image. <code>runStrategy</code> is <code>Manual</code>. Inline cloud-init names <code>fedora</code> and curls <code>scripts/minikube-guest-boot.sh</code>.</p>
       <table>
         <thead><tr><th>Piece</th><th>Value</th></tr></thead>
         <tbody>
@@ -152,7 +152,7 @@ openshell sandbox create \
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
-      <p>Ask tasks skip import if <code>openshell profile get ollama</code> already succeeds on that gateway.</p>
+      <p>Ask tasks skip import if <code>openshell profile get ollama</code> already succeeds on that gateway. They do not run <code>openshell gateway remove</code> when the gateway is already connected, so a second Ask does not hit <code>custom provider profile 'ollama' already exists</code>.</p>
       <h3>2. Create the agent sandbox</h3>
       <p>The agent is not a separate CR. It is an OpenShell sandbox from <code>registry.access.redhat.com/hi/python:3.12</code> with <code>--provider ollama</code> and <code>--policy deploy/hi-python.policy.yaml</code>. A5 names it <code>hello-ask</code> (lists models, English prompt). A6 names it <code>hello-agent</code> (Spanish prompt). The process is <code>examples/ask.py</code> inlined as <code>python3.12 -c</code>.</p>
       <pre><code>openshell sandbox create \
@@ -170,8 +170,8 @@ openshell provider get ollama</code></pre>
       <ol>
         <li><code>ask.py</code> reads <code>OPENAI_BASE_URL</code> and POSTs <code>/v1/chat/completions</code> (A5 also GETs <code>/v1/models</code>).</li>
         <li>The profile allows that host and port. The policy allows <code>/usr/bin/python3.12</code>.</li>
-        <li>The supervisor on the guest dials <code>host.openshell.internal:11434</code>.</li>
-        <li>Ask first applies <code>deploy/sandbox-ollama.yaml</code> (CPU Ollama <code>llama3.2:1b</code>, 4Gi, GPU quota 0) and installs a TCP proxy on the guest so <code>:11434</code> forwards to the Ollama ClusterIP in this project. The 1b model does not compete for the guest's 8Gi.</li>
+        <li>The supervisor on the guest dials <code>host.openshell.internal:11434</code>. Connect sets OpenShell <code>server.hostGatewayIP</code> so Kubernetes sandbox pods can resolve that name (they have no DNS of their own).</li>
+        <li><strong>A2</strong> or <strong>B2</strong> applies <code>deploy/sandbox-ollama.yaml</code> (CPU Ollama <code>llama3.2:1b</code>, 4Gi, GPU quota 0). Connect installs a TCP proxy on the guest so <code>:11434</code> forwards to the Ollama ClusterIP in this project. The 1b model does not compete for the guest's 8Gi.</li>
         <li>Ollama answers. The sandbox never has a route of its own.</li>
       </ol>
     </article>
@@ -190,7 +190,7 @@ openshell provider get ollama</code></pre>
 # paste the JSON into ~/.config/hello-openshell/openshift-pull-secret
 chmod 600 ~/.config/hello-openshell/openshift-pull-secret</code></pre>
         </li>
-        <li><strong>B2. Start RHEL VM</strong> — creates <code>rhel-vm</code> or starts it if it already exists. Developer Sandbox stops Linux VMs after one hour; run B2 again when the status is Stopped.</li>
+        <li><strong>B2. Start RHEL VM and Ollama</strong> — creates <code>rhel-vm</code> or starts it if it already exists, and starts CPU Ollama in this project. Developer Sandbox stops Linux VMs after one hour; run B2 again when the status is Stopped.</li>
         <li>Wait until the VM is Running. Do not start B4 yet.</li>
         <li><strong>B3. Connect MicroShift</strong> — copies the pull secret, waits for cloud-init (one RPM lock), installs MicroShift if needed, and registers the gateway <code>microshift</code>. Leave it running; first boot can take tens of minutes.</li>
         <li>If B3 prints <code>The guest has no pull secret</code>, the file in step 2 is missing or has no <code>auths</code>. Fix the file, then B3 again. No Clean.</li>
@@ -200,8 +200,8 @@ chmod 600 ~/.config/hello-openshell/openshift-pull-secret</code></pre>
       </ol>
     </article>
     <article class="step">
-      <h2><span>B2</span>RHEL VM</h2>
-      <p>Task <strong>B2. Start RHEL VM</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code>. The guest is <code>rhel-vm</code>, cloned from DataSource <code>rhel9</code> with preference <code>rhel.9</code>. Login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>. The workspace SSH key is the same as the Fedora VM. If the VM object already exists, B2 leaves the disk and cloud-init alone and only starts it.</p>
+      <h2><span>B2</span>RHEL VM and Ollama</h2>
+      <p>Task <strong>B2. Start RHEL VM and Ollama</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code> and starts CPU Ollama in this project so B5 / B6 do not wait on the model pull. The guest is <code>rhel-vm</code>, cloned from DataSource <code>rhel9</code> with preference <code>rhel.9</code>. Login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>. The workspace SSH key is the same as the Fedora VM. If the VM object already exists, B2 leaves the disk and cloud-init alone and only starts it.</p>
       <pre><code>bash scripts/sandbox-rhel-up.sh
 ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
   cloud-user@rhel-vm.$(oc project -q).svc.cluster.local</code></pre>

@@ -1,6 +1,37 @@
 import json
 import os
+import socket
 import urllib.request
+
+# Kubernetes sandboxes have no DNS. OpenShell injects host.openshell.internal
+# when server.hostGatewayIP is set. If getaddrinfo still fails, map the name
+# to OPENSHELL_HOST_IP (the guest address the supervisor can dial).
+_HOST = "host.openshell.internal"
+_HOST_IP = os.environ.get("OPENSHELL_HOST_IP", "").strip()
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _getaddrinfo(host, port, *args, **kwargs):
+    if host == _HOST:
+        try:
+            return _orig_getaddrinfo(host, port, *args, **kwargs)
+        except OSError:
+            if not _HOST_IP:
+                raise
+            port_i = 0 if port is None else int(port)
+            return [
+                (
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    "",
+                    (_HOST_IP, port_i),
+                )
+            ]
+    return _orig_getaddrinfo(host, port, *args, **kwargs)
+
+
+socket.getaddrinfo = _getaddrinfo
 
 base = os.environ["OPENAI_BASE_URL"].rstrip("/")
 model = os.environ.get("MODEL_NAME", "llama3.2:1b")

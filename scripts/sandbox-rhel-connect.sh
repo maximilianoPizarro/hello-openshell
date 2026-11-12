@@ -11,7 +11,7 @@ RHEL_VM_NAME=rhel-vm
 RHEL_PULL_SECRET="${SANDBOX_VM_CFG}/openshift-pull-secret"
 
 if [ ! -f "${SANDBOX_VM_KEY}" ]; then
-  echo "No SSH key at ${SANDBOX_VM_KEY}. Run B2. Start RHEL VM first."
+  echo "No SSH key at ${SANDBOX_VM_KEY}. Run B2. Start RHEL VM and Ollama first."
   exit 1
 fi
 
@@ -52,7 +52,7 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
     continue
   fi
   if [ -z "${vm_status}" ]; then
-    echo "VM ${RHEL_VM_NAME} is missing. Run B2. Start RHEL VM first."
+    echo "VM ${RHEL_VM_NAME} is missing. Run B2. Start RHEL VM and Ollama first."
     exit 1
   fi
 
@@ -145,7 +145,6 @@ else
   fi
 fi
 
-openshell gateway remove microshift >/dev/null 2>&1 || true
-openshell gateway add https://127.0.0.1:8080 --local --name microshift
-openshell gateway select microshift
-openshell status
+export SANDBOX_GATEWAY=microshift
+sandbox_openshell_register_gateway microshift
+sandbox_openshell_prepare_ask "${ROOT}"
