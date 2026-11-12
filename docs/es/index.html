@@ -126,7 +126,9 @@ B8. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh</code></pre>
           <tr><td>Gateway</td><td>Agent Sandbox v1.0.10, chart de OpenShell 0.1.8</td></tr>
         </tbody>
       </table>
-      <p>El script del guest corre como root. minikube 1.39 pide <code>--force</code> (<code>DRV_AS_ROOT</code>). Se detiene si falta <code>landlock</code> en <code>/sys/kernel/security/lsm</code>. Developer Sandbox apaga las VMs Linux a la hora. Si la VM ya existe, el script deja el disco y el cloud-init; un script de arranque nuevo pide <strong>A1. Clean</strong>. Connect espera hasta 40 minutos a <code>/var/lib/hello-openshell/ready</code>. El log del guest es <code>/var/log/cloud-init-output.log</code>.</p>
+      <p>El script del guest corre como root. minikube 1.39 pide <code>--force</code> (<code>DRV_AS_ROOT</code>). Se detiene si falta <code>landlock</code> en <code>/sys/kernel/security/lsm</code>. Developer Sandbox apaga las VMs Linux a la hora. Si la VM ya existe, el script deja el disco y el cloud-init; un script de arranque nuevo pide <strong>A1. Clean</strong>. Connect espera hasta 40 minutos a <code>/var/lib/hello-openshell/ready</code>. El log del guest es <code>/var/log/cloud-init-output.log</code>. Si SSH dice <code>Offending ED25519 key</code> o <code>Host key verification failed</code>, el guest se recreó y la clave vieja sigue en <code>~/.config/hello-openshell/known_hosts</code>. Connect olvida esa clave. A1. Clean borra el archivo. Para destrabar la tarea de ahora:</p>
+      <pre><code>ssh-keygen -R minikube-vm.$(oc project -q).svc.cluster.local \
+  -f ~/.config/hello-openshell/known_hosts</code></pre>
     </article>
     <article class="step">
       <h2><span>A4</span>Crear el sandbox de humo</h2>
@@ -195,6 +197,7 @@ chmod 600 ~/.config/hello-openshell/openshift-pull-secret</code></pre>
         <li><strong>B3. Connect MicroShift</strong> — copia el pull secret, espera a cloud-init (un solo lock de RPM), instala MicroShift si hace falta y registra el gateway <code>microshift</code>. Dejalo correr; el primer boot puede tardar decenas de minutos.</li>
         <li>Si B3 dice <code>The guest has no pull secret</code>, falta el archivo del paso 2 o no tiene <code>auths</code>. Arreglá el archivo y volvé a B3. No hace falta Clean.</li>
         <li>Si SSH dice <code>Connection refused</code> y <code>vm=Stopped</code>, corré B2 y después B3. No hace falta Clean.</li>
+        <li>Si SSH dice <code>Offending ED25519 key</code> o <code>Host key verification failed</code>, el guest se recreó. Connect olvida la clave vieja en <code>~/.config/hello-openshell/known_hosts</code>. No hace falta Clean. Para destrabar ahora: <code>ssh-keygen -R rhel-vm.$(oc project -q).svc.cluster.local -f ~/.config/hello-openshell/known_hosts</code>.</li>
         <li>Si ves <code>/var/lib/rpm/.rpm.lock</code>, cloud-init y B3 se pisaron. Esperá y volvé a B3. El script del guest ahora espera ese lock.</li>
         <li>Cuando B3 diga que el gateway está up, corré <strong>B4</strong>, después <strong>B5 / B6</strong> (el mismo circuito de <a href="#circuit">perfil, provider y agente</a>), y B7 / B8 si querés el TUI o los logs.</li>
       </ol>

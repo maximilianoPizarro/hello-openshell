@@ -13,6 +13,31 @@ SANDBOX_VM_CFG="${HOME}/.config/hello-openshell"
 SANDBOX_VM_KEY="${SANDBOX_VM_CFG}/minikube_ed25519"
 SANDBOX_VM_NS="$(oc project -q)"
 
+sandbox_ssh_host() {
+  case "${1:-${SANDBOX_GATEWAY:-minikube}}" in
+    microshift) echo "${RHEL_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local" ;;
+    *) echo "${SANDBOX_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local" ;;
+  esac
+}
+
+# Clean or a new disk issues a new guest SSH host key. accept-new still
+# fails when the old key is already in known_hosts.
+sandbox_forget_host_key() {
+  local host="${1:?}"
+  local kh="${SANDBOX_VM_CFG}/known_hosts"
+  mkdir -p "${SANDBOX_VM_CFG}"
+  if [ ! -f "${kh}" ]; then
+    return 0
+  fi
+  echo "Forgetting SSH host key for ${host} (the guest was recreated)."
+  ssh-keygen -R "${host}" -f "${kh}" >/dev/null 2>&1 || true
+  rm -f "${kh}.old"
+}
+
+sandbox_ssh_host_key_changed() {
+  printf '%s\n' "${1:-}" | grep -qiE 'Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED|Offending .+ key'
+}
+
 sandbox_vm_ssh() {
   ssh -i "${SANDBOX_VM_KEY}" \
     -o IdentitiesOnly=yes \

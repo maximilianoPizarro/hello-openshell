@@ -35,6 +35,7 @@ fi
 if oc get vm "${SANDBOX_VM_NAME}" >/dev/null 2>&1; then
   echo "VM ${SANDBOX_VM_NAME} already exists. Leaving its disk and cloud-init alone."
 else
+  sandbox_forget_host_key "${SANDBOX_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local"
   pass_file="${SANDBOX_VM_CFG}/fedora.password"
   if [ ! -f "${pass_file}" ]; then
     openssl rand -hex 12 > "${pass_file}"

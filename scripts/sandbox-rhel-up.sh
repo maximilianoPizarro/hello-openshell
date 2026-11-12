@@ -37,6 +37,7 @@ fi
 if oc get vm "${VM_NAME}" >/dev/null 2>&1; then
   echo "VM ${VM_NAME} already exists. Leaving its disk and cloud-init alone."
 else
+  sandbox_forget_host_key "${VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local"
   pass_file="${SANDBOX_VM_CFG}/rhel.password"
   if [ ! -f "${pass_file}" ]; then
     openssl rand -hex 12 > "${pass_file}"

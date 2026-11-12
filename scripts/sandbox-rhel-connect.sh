@@ -60,6 +60,7 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
     rhel_ssh sudo -n install -d -m 755 /etc/crio /var/lib/hello-openshell
     scp -q -i "${SANDBOX_VM_KEY}" \
       -o IdentitiesOnly=yes \
+      -o StrictHostKeyChecking=accept-new \
       -o UserKnownHostsFile="${SANDBOX_VM_CFG}/known_hosts" \
       "${RHEL_PULL_SECRET}" \
       "cloud-user@${RHEL_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local:/tmp/openshift-pull-secret"
@@ -67,6 +68,7 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
     rhel_ssh rm -f /tmp/openshift-pull-secret
     scp -q -i "${SANDBOX_VM_KEY}" \
       -o IdentitiesOnly=yes \
+      -o StrictHostKeyChecking=accept-new \
       -o UserKnownHostsFile="${SANDBOX_VM_CFG}/known_hosts" \
       "${ROOT}/scripts/microshift-guest-boot.sh" \
       "${ROOT}/deploy/openshift-scc-values.yaml" \
@@ -90,6 +92,10 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
     echo "Guest boot has not finished (exit ${code}). Waiting; cloud-init may still hold rpm."
     rhel_ssh "sudo -n tail -n 20 /var/log/cloud-init-output.log" || true
   else
+    if sandbox_ssh_host_key_changed "${err}"; then
+      sandbox_forget_host_key "$(sandbox_ssh_host microshift)"
+      continue
+    fi
     if printf '%s\n' "${err}" | grep -q "Permission denied"; then
       echo "This workspace key is not authorized in the VM."
       echo "Cloud-init keeps the key from the first boot. Run B1. Clean, then B2. Start RHEL VM."

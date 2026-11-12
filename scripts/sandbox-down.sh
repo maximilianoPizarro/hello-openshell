@@ -16,6 +16,9 @@ do
     rm -f "${pidfile}"
   fi
 done
+# A new guest disk has a new SSH host key.
+rm -f "${HOME}/.config/hello-openshell/known_hosts" \
+  "${HOME}/.config/hello-openshell/known_hosts.old"
 
 oc delete vm,vmi,dv,pvc \
   -l app.kubernetes.io/part-of=hello-openshell \

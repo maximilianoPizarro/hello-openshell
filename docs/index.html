@@ -126,7 +126,9 @@ B8. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh</code></pre>
           <tr><td>Gateway</td><td>Agent Sandbox v1.0.10, OpenShell chart 0.1.8</td></tr>
         </tbody>
       </table>
-      <p>The guest script runs as root. minikube 1.39 needs <code>--force</code> (<code>DRV_AS_ROOT</code>). It stops if <code>landlock</code> is missing from <code>/sys/kernel/security/lsm</code>. Developer Sandbox stops Linux VMs after one hour. If the VM already exists, the script leaves the disk and cloud-init alone, so a new boot script needs <strong>A1. Clean</strong> first. Connect waits up to 40 minutes for <code>/var/lib/hello-openshell/ready</code>. The guest log is <code>/var/log/cloud-init-output.log</code>.</p>
+      <p>The guest script runs as root. minikube 1.39 needs <code>--force</code> (<code>DRV_AS_ROOT</code>). It stops if <code>landlock</code> is missing from <code>/sys/kernel/security/lsm</code>. Developer Sandbox stops Linux VMs after one hour. If the VM already exists, the script leaves the disk and cloud-init alone, so a new boot script needs <strong>A1. Clean</strong> first. Connect waits up to 40 minutes for <code>/var/lib/hello-openshell/ready</code>. The guest log is <code>/var/log/cloud-init-output.log</code>. If SSH says <code>Offending ED25519 key</code> or <code>Host key verification failed</code>, the guest was recreated and the old key is still in <code>~/.config/hello-openshell/known_hosts</code>. Connect forgets that key. A1. Clean deletes the file. To unblock the current task:</p>
+      <pre><code>ssh-keygen -R minikube-vm.$(oc project -q).svc.cluster.local \
+  -f ~/.config/hello-openshell/known_hosts</code></pre>
     </article>
     <article class="step">
       <h2><span>A4</span>Create the smoke sandbox</h2>
@@ -195,6 +197,7 @@ chmod 600 ~/.config/hello-openshell/openshift-pull-secret</code></pre>
         <li><strong>B3. Connect MicroShift</strong> — copies the pull secret, waits for cloud-init (one RPM lock), installs MicroShift if needed, and registers the gateway <code>microshift</code>. Leave it running; first boot can take tens of minutes.</li>
         <li>If B3 prints <code>The guest has no pull secret</code>, the file in step 2 is missing or has no <code>auths</code>. Fix the file, then B3 again. No Clean.</li>
         <li>If SSH says <code>Connection refused</code> and <code>vm=Stopped</code>, run B2, then B3. No Clean.</li>
+        <li>If SSH says <code>Offending ED25519 key</code> or <code>Host key verification failed</code>, the guest was recreated. Connect forgets the old key in <code>~/.config/hello-openshell/known_hosts</code>. No Clean. To unblock now: <code>ssh-keygen -R rhel-vm.$(oc project -q).svc.cluster.local -f ~/.config/hello-openshell/known_hosts</code>.</li>
         <li>If you see <code>/var/lib/rpm/.rpm.lock</code>, cloud-init and B3 raced. Wait, then B3 again. The guest script now waits on that lock.</li>
         <li>When B3 prints that the gateway is up, run <strong>B4</strong>, then <strong>B5 / B6</strong> (same <a href="#circuit">profile, provider, and agent</a> circuit), then B7 / B8 if you want the TUI or logs.</li>
       </ol>

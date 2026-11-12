@@ -60,6 +60,10 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
       sandbox_vm_ssh "sudo tail -n 15 /var/log/cloud-init-output.log" || true
     fi
   else
+    if sandbox_ssh_host_key_changed "${err}"; then
+      sandbox_forget_host_key "$(sandbox_ssh_host minikube)"
+      continue
+    fi
     if printf '%s\n' "${err}" | grep -q "Permission denied"; then
       echo "This workspace key is not authorized in the VM."
       echo "Cloud-init keeps the key from the first boot. Run the Clean task, then Start minikube VM."
