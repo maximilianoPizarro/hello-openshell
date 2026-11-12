@@ -134,17 +134,22 @@ def sandbox() -> None:
 def sandbox_flow() -> None:
     body = "\n".join(
         [
-            card(40, 90, 240, 140, "ask.py", "python-logo.svg", "inside the sandbox"),
-            card(320, 90, 240, 140, "OpenShell policy", "nvidia-logo.svg", "ALLOW POST /v1"),
-            card(600, 90, 240, 140, "Supervisor", "openshift.svg", "dials the host"),
-            card(880, 90, 240, 140, "Ollama", "ollama.svg", "llama3.2:1b"),
-            arrow(280, 160, 320, 160),
-            arrow(560, 160, 600, 160),
-            arrow(840, 160, 880, 160),
-            f'<text x="40" y="280" fill="{MUTED}" font-size="14" font-family="RedHatText, Helvetica, Arial, sans-serif">The sandbox cannot use loopback. The supervisor connects to host.openshell.internal:11434.</text>',
+            card(40, 90, 340, 130, "1. Profile ollama", "nvidia-logo.svg", "host.openshell.internal:11434"),
+            card(410, 90, 340, 130, "2. Provider ollama", "ollama.svg", "openshell provider create"),
+            card(780, 90, 340, 130, "3. Agent sandbox", "python-logo.svg", "hello-ask / hello-agent"),
+            arrow(380, 155, 410, 155),
+            arrow(750, 155, 780, 155),
+            card(40, 260, 250, 130, "ask.py POST", "python-logo.svg", "/v1/chat/completions"),
+            card(320, 260, 250, 130, "Policy ALLOW", "nvidia-logo.svg", "hi-python  ·  UID 65532"),
+            card(600, 260, 250, 130, "Supervisor", "openshift.svg", "guest :11434 proxy"),
+            card(880, 260, 250, 130, "Ollama", "ollama.svg", "llama3.2:1b in the project"),
+            arrow(290, 325, 320, 325),
+            arrow(570, 325, 600, 325),
+            arrow(850, 325, 880, 325),
+            f'<text x="40" y="440" fill="{MUTED}" font-size="14" font-family="RedHatText, Helvetica, Arial, sans-serif">Ask imports the profile, creates the provider, then runs ask.py inside the sandbox. The sandbox has no network of its own.</text>',
         ]
     )
-    write("sandbox-ask-flow.svg", 1160, 320, "Ask from the OpenShell sandbox", body)
+    write("sandbox-ask-flow.svg", 1170, 480, "Profile, provider, and agent", body)
 
 
 def local_arch() -> None:

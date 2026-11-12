@@ -13,6 +13,11 @@ VALUES="${MARKER}/openshift-scc-values.yaml"
 KUBECONFIG=""
 
 mkdir -p "${MARKER}"
+exec 9>"${MARKER}/boot.lock"
+if ! flock -w 2400 9; then
+  echo "Timed out waiting for another microshift-guest-boot.sh."
+  exit 1
+fi
 
 have_pull_secret() {
   python3 - <<'PY'
@@ -77,8 +82,17 @@ EOF
     --enablerepo='microshift-4.22,openshift-4.22-deps,alma-baseos,alma-appstream' \
     microshift
   rm -f /tmp/ms-rpms/*.i686.rpm
-  rpm -Uvh --replacefiles --oldpackage /tmp/ms-rpms/*.rpm
-  rpm -q microshift cri-o
+  local i
+  for i in $(seq 1 30); do
+    if rpm -Uvh --replacefiles --oldpackage /tmp/ms-rpms/*.rpm; then
+      rpm -q microshift cri-o
+      return 0
+    fi
+    echo "rpm transaction locked or failed. Waiting."
+    sleep 20
+  done
+  echo "rpm -Uvh could not get /var/lib/rpm/.rpm.lock."
+  return 1
 }
 
 configure_guest() {

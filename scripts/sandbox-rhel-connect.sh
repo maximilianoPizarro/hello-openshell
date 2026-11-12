@@ -11,7 +11,11 @@ RHEL_VM_NAME=rhel-vm
 RHEL_PULL_SECRET="${SANDBOX_VM_CFG}/openshift-pull-secret"
 
 if [ ! -f "${SANDBOX_VM_KEY}" ]; then
-  echo "No SSH key at ${SANDBOX_VM_KEY}. Run scripts/sandbox-rhel-up.sh first."
+  echo "No SSH key at ${SANDBOX_VM_KEY}. Run B2. Start RHEL VM first."
+  exit 1
+fi
+
+if ! sandbox_require_pull_secret; then
   exit 1
 fi
 
@@ -42,17 +46,25 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
     oc describe dv rhel-vm-disk || true
     exit 1
   fi
+  if [ "${vm_status}" = "Stopped" ] || [ "${vm_status}" = "Paused" ]; then
+    sandbox_kubevirt_start "${RHEL_VM_NAME}" || true
+    sleep 20
+    continue
+  fi
+  if [ -z "${vm_status}" ]; then
+    echo "VM ${RHEL_VM_NAME} is missing. Run B2. Start RHEL VM first."
+    exit 1
+  fi
 
   if err="$(rhel_ssh true 2>&1)"; then
-    if [ -s "${RHEL_PULL_SECRET}" ]; then
-      scp -q -i "${SANDBOX_VM_KEY}" \
-        -o IdentitiesOnly=yes \
-        -o UserKnownHostsFile="${SANDBOX_VM_CFG}/known_hosts" \
-        "${RHEL_PULL_SECRET}" \
-        "cloud-user@${RHEL_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local:/tmp/openshift-pull-secret"
-      rhel_ssh sudo -n install -m 600 /tmp/openshift-pull-secret /etc/crio/openshift-pull-secret
-      rhel_ssh rm -f /tmp/openshift-pull-secret
-    fi
+    rhel_ssh sudo -n install -d -m 755 /etc/crio /var/lib/hello-openshell
+    scp -q -i "${SANDBOX_VM_KEY}" \
+      -o IdentitiesOnly=yes \
+      -o UserKnownHostsFile="${SANDBOX_VM_CFG}/known_hosts" \
+      "${RHEL_PULL_SECRET}" \
+      "cloud-user@${RHEL_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local:/tmp/openshift-pull-secret"
+    rhel_ssh sudo -n install -m 600 /tmp/openshift-pull-secret /etc/crio/openshift-pull-secret
+    rhel_ssh rm -f /tmp/openshift-pull-secret
     scp -q -i "${SANDBOX_VM_KEY}" \
       -o IdentitiesOnly=yes \
       -o UserKnownHostsFile="${SANDBOX_VM_CFG}/known_hosts" \
@@ -60,7 +72,6 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
       "${ROOT}/deploy/openshift-scc-values.yaml" \
       "cloud-user@${RHEL_VM_NAME}.${SANDBOX_VM_NS}.svc.cluster.local:/tmp/"
     rhel_ssh sudo -n install -m 755 /tmp/microshift-guest-boot.sh /usr/local/sbin/microshift-guest-boot.sh
-    rhel_ssh sudo -n install -d -m 755 /var/lib/hello-openshell
     rhel_ssh sudo -n install -m 644 /tmp/openshift-scc-values.yaml /var/lib/hello-openshell/openshift-scc-values.yaml
     set +e
     rhel_ssh sudo -n bash /usr/local/sbin/microshift-guest-boot.sh
@@ -71,12 +82,13 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
       break
     fi
     if [ "${code}" -eq 2 ] || rhel_ssh "test -f /var/lib/hello-openshell/needs-pull-secret"; then
-      echo "The guest has no pull secret."
-      echo "Save a Red Hat pull secret as ${RHEL_PULL_SECRET} and run this task again."
+      echo "The guest still has no usable pull secret at /etc/crio/openshift-pull-secret."
+      echo "Save a Red Hat pull secret as ${RHEL_PULL_SECRET} and run B3 again."
+      echo "Download: https://console.redhat.com/openshift/install/pull-secret"
       exit 1
     fi
-    echo "Guest boot has not finished (exit ${code})."
-    rhel_ssh "sudo -n tail -n 40 /var/log/cloud-init-output.log; echo ---; sudo -n journalctl -u microshift -n 20 --no-pager" || true
+    echo "Guest boot has not finished (exit ${code}). Waiting; cloud-init may still hold rpm."
+    rhel_ssh "sudo -n tail -n 20 /var/log/cloud-init-output.log" || true
   else
     if printf '%s\n' "${err}" | grep -q "Permission denied"; then
       echo "This workspace key is not authorized in the VM."

@@ -123,9 +123,10 @@ fi
 pass_file="${SANDBOX_VM_CFG}/rhel.password"
 echo
 echo "Guest: RHEL 9, user cloud-user. Cloud-init installs MicroShift, not minikube."
-echo "Then run: bash scripts/sandbox-rhel-connect.sh"
-echo "That step needs ~/.config/hello-openshell/openshift-pull-secret."
-echo "Developer Sandbox stops Linux VMs after one hour. Run this task again if that happens."
+echo "Then run B3. Connect MicroShift."
+echo "Save a Red Hat pull secret as ${SANDBOX_VM_CFG}/openshift-pull-secret first."
+echo "Download: https://console.redhat.com/openshift/install/pull-secret"
+echo "Developer Sandbox stops Linux VMs after one hour. B3 starts a Stopped VM."
 echo "Console password file: ${pass_file}"
 echo
 echo "From this workspace, once sshd answers:"

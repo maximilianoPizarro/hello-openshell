@@ -62,6 +62,63 @@ sandbox_gateway_start_hint() {
   esac
 }
 
+sandbox_kubevirt_start() {
+  local name="${1:?}"
+  local status server start_code
+  status="$(oc get vm "${name}" -o jsonpath='{.status.printableStatus}' 2>/dev/null || true)"
+  case "${status}" in
+    Running|Starting|Provisioning|WaitingForVolumeBinding|WaitingForReceiver)
+      return 0
+      ;;
+    "")
+      echo "VM ${name} is missing. Run the Start task first."
+      return 1
+      ;;
+  esac
+  echo "VM ${name} is ${status}. Starting it (Developer Sandbox stops Linux VMs after one hour)."
+  mkdir -p "${SANDBOX_VM_CFG}"
+  server="$(oc whoami --show-server)"
+  start_code="$(curl -sS -o "${SANDBOX_VM_CFG}/${name}-start.json" -w "%{http_code}" -k -X PUT \
+    -H "Authorization: Bearer $(oc whoami -t)" \
+    -H "Content-Type: application/json" \
+    -d '{}' \
+    "${server}/apis/subresources.kubevirt.io/v1/namespaces/${SANDBOX_VM_NS}/virtualmachines/${name}/start" || true)"
+  echo "start HTTP ${start_code}"
+  case "${start_code}" in
+    200|202|409) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+sandbox_require_pull_secret() {
+  local path="${SANDBOX_VM_CFG}/openshift-pull-secret"
+  if [ ! -s "${path}" ]; then
+    echo "B3 needs a Red Hat pull secret before Connect MicroShift."
+    echo "Download it from https://console.redhat.com/openshift/install/pull-secret"
+    echo "Save the JSON as ${path}"
+    echo "chmod 600 ${path}"
+    echo "Then run B3 again. Cloud-init can install RPMs without it; MicroShift cannot pull quay.io/openshift-release-dev."
+    return 1
+  fi
+  if ! python3 - "${path}" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text())
+except Exception as exc:
+    print("openshift-pull-secret is not JSON:", exc)
+    sys.exit(1)
+if not isinstance(data, dict) or not data.get("auths"):
+    print("openshift-pull-secret has no auths object.")
+    sys.exit(1)
+PY
+  then
+    return 1
+  fi
+  return 0
+}
+
 # kubectl port-forward exits when its API connection drops. A unit brings it back.
 sandbox_vm_ensure_gateway() {
   sandbox_vm_ssh sudo -n bash -s <<'EOF'

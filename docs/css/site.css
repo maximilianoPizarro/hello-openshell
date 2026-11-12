@@ -104,7 +104,8 @@ nav.tracks a[aria-current="page"], .lang a[aria-current="page"] {
 
 .step { margin: 16px 0; }
 .step h2 span { color: var(--accent); margin-right: 8px; }
-.step ul { margin: 0 0 8px; padding-left: 1.2em; }
+.step h3 { font-size: 16px; margin: 14px 0 8px; }
+.step ul, .step ol { margin: 0 0 8px; padding-left: 1.2em; }
 .step li { margin: 0 0 6px; }
 
 figure { margin: 14px 0; }
