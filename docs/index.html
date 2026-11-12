@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="css/site.css">
 </head>
 <body>
+  <a class="skip" href="#content">Skip to content</a>
   <header class="top">
     <div class="wrap bar">
       <a class="brand" href="index.html">
@@ -53,73 +54,110 @@
       </nav>
     </div>
   </header>
-  <main class="wrap">
-    <section class="hero">
+  <div class="page">
+    <nav class="toc" aria-label="On this page">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#before">Before you start</a></li>
+        <li><a href="#workspace">0. Open the workspace</a></li>
+        <li><a href="#commands">Devfile commands</a></li>
+        <li><a href="#fedora">Path A · Fedora</a></li>
+        <li><a href="#rhel">Path B · RHEL</a></li>
+        <li><a href="#circuit">Circuit</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+        <li><a href="#glossary">Glossary</a></li>
+        <li><a href="#about">About</a></li>
+      </ol>
+    </nav>
+    <main id="content">
+    <section class="hero" id="before">
       <p class="kicker">OpenShift Dev Spaces · Virtualization</p>
       <h1>Developer Sandbox</h1>
-      <p class="lede">Open the repo in a workspace. Startup installs the OpenShell 0.1.8 CLI. The sandbox project cannot host the gateway, so OpenShift Virtualization runs a guest in that project: Fedora with minikube, or RHEL with MicroShift. Two numbered journeys live under <strong>Terminal → Run Task…</strong>. Quota holds one <code>u1.large</code> guest plus Ollama, so run <strong>A1. Clean</strong> or <strong>B1. Clean</strong> before you start a path. The agent in A5/A6 and B5/B6 runs inside the sandbox and reaches CPU Ollama through <code>host.openshell.internal:11434</code>.</p>
+      <p>OpenShell runs agents inside sandboxes with explicit network and filesystem policy. In this guide you start a gateway in an OpenShift Virtualization VM, create a sandbox that has no network of its own, and run an agent that talks to CPU Ollama through one host you allow in a profile.</p>
+      <p class="lede">You need a free <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> account and a browser. Path B also needs a Red Hat pull secret. If this is your first time, start with path A (Fedora + minikube).</p>
+      <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
       <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Open in Developer Sandbox</a></p>
     </section>
+    <div class="callouts" role="region" aria-label="Before you start">
+      <section class="note warn">
+        <p><strong>One hour.</strong> Developer Sandbox stops Linux VMs after one hour. If the status is Stopped, run A2 or B2 again. Do not Clean for that.</p>
+      </section>
+      <section class="note warn">
+        <p><strong>One VM.</strong> Quota holds one <code>u1.large</code> guest plus Ollama. Run <strong>A1. Clean</strong> or <strong>B1. Clean</strong> before you start a path or switch guests.</p>
+      </section>
+      <section class="note warn">
+        <p><strong>Long waits.</strong> Leave A2, A3, B2, and B3 running. Do not close the terminal. First B3 boot can take tens of minutes.</p>
+      </section>
+      <section class="note warn">
+        <p><strong>No GPU.</strong> GPU quota is 0, so Ollama runs on CPU with <code>llama3.2:1b</code>. Answers are slow and can be short or imprecise.</p>
+      </section>
+    </div>
+    <table>
+      <thead><tr><th>Step</th><th>Documented wait</th></tr></thead>
+      <tbody>
+        <tr><td>Open workspace</td><td>A few minutes for Dev Spaces to start and install the CLI</td></tr>
+        <tr><td>A2 / B2</td><td>Several minutes: disk clone while Ollama pulls <code>llama3.2:1b</code></td></tr>
+        <tr><td>A3</td><td>Until <code>/var/lib/hello-openshell/ready</code>, up to 40 minutes</td></tr>
+        <tr><td>B3</td><td>Tens of minutes on first MicroShift boot</td></tr>
+        <tr><td>A5 / A6 / A9</td><td>Slow: one CPU, <code>llama3.2:1b</code>. A2 / B2 warm the model so the supervisor does not close a cold POST</td></tr>
+      </tbody>
+    </table>
+    <p class="time">Waits come from the scripts and a Developer Sandbox run on 12 November 2026 (path A Ask completed). They are not a stopwatch of every click.</p>
     <div class="cards">
-      <a class="card" href="#fedora"><h2>Fedora + minikube</h2><p>A1 Clean, then A2–A8. Gateway name <code>minikube</code>.</p></a>
-      <a class="card" href="#rhel"><h2>RHEL + MicroShift</h2><p>Pull secret, B2, wait Running, B3, then B4–B8. Gateway name <code>microshift</code>.</p></a>
+      <a class="card" href="#fedora"><h2>Fedora + minikube</h2><p>First time? Start here. A1 Clean, then A2–A10. Gateway name <code>minikube</code>.</p></a>
+      <a class="card" href="#rhel"><h2>RHEL + MicroShift</h2><p>Pull secret, B1 if Fedora is running, then B2–B10. Gateway name <code>microshift</code>.</p></a>
       <a class="card" href="#circuit"><h2>Profile and agent</h2><p>How Ask imports <code>ollama.profile.yaml</code>, creates the provider, and runs <code>ask.py</code> in the sandbox.</p></a>
+      <a class="card" href="#troubleshooting"><h2>Troubleshooting</h2><p>Symptom, cause, and fix for SSH keys, pull secret, quota, and cold model load.</p></a>
       <a class="card" href="cloudshell/index.html"><h2>Cloud Shell</h2><p>Gateway only. That kernel has no Landlock, so a sandbox cannot run.</p></a>
       <a class="card" href="local/index.html"><h2>Local</h2><p>Podman on your computer, last in this list.</p></a>
     </div>
     <figure>
-      <img src="assets/diagrams/sandbox-architecture.svg" alt="Dev Spaces workspace, Fedora minikube or RHEL MicroShift, OpenShell sandbox, Ollama">
-      <figcaption>One <code>u1.large</code> guest at a time. GPU quota is 0. The sandbox has no network of its own.</figcaption>
+      <img src="assets/diagrams/sandbox-ask-path.svg" alt="How a question travels from the Dev Spaces workspace through an SSH tunnel, the OpenShell sandbox, the supervisor, the guest TCP proxy, and CPU Ollama">
+      <figcaption>The agent runs in the sandbox. The sandbox has no network of its own. The supervisor dials the guest; a proxy there reaches Ollama in this project.</figcaption>
     </figure>
 
-    <article class="step">
-      <h2><span>1</span>Open the workspace</h2>
-      <p>Use the button, or in <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> open <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> and create a workspace from this repository. <code>devfile.yaml</code> requests 512Mi / 200m and limits the tools container to 4Gi / 2 CPUs. Storage is ephemeral. On start it runs command 1 below. The other tasks stay manual (<strong>Terminal → Run Task…</strong>). Run them in the workspace shell: that shell can resolve <code>minikube-vm.&lt;project&gt;.svc.cluster.local</code> and <code>rhel-vm.&lt;project&gt;.svc.cluster.local</code>. A laptop cannot.</p>
-    </article>
-    <section class="glossary" id="glossary">
-      <h2>Pieces of the circuit</h2>
-      <dl>
-        <dt>Policy</dt>
-        <dd><code>deploy/hi-python.policy.yaml</code> — filesystem and UID. The hardened image runs as 65532/65532.</dd>
-        <dt>Profile</dt>
-        <dd><code>deploy/ollama.profile.yaml</code> — the only host the sandbox may ask the supervisor to dial: <code>host.openshell.internal:11434</code>. No credential. Loopback is always blocked.</dd>
-        <dt>Provider</dt>
-        <dd><code>openshell provider create --name ollama --type ollama</code> — registers Ollama as the named inference backend on this gateway.</dd>
-        <dt>Agent</dt>
-        <dd>An OpenShell sandbox (<code>hello-ask</code> or <code>hello-agent</code>) that runs <code>examples/ask.py</code>. It has no network of its own.</dd>
-        <dt>Supervisor</dt>
-        <dd>On the guest. It makes the allowed outbound connection. Here that hits a TCP proxy on the guest that forwards to Ollama in this OpenShift project.</dd>
-      </dl>
-    </section>
-
-    <article class="step">
-      <h2><span>2</span>Devfile commands</h2>
-      <p>These are the <code>exec</code> commands under <strong>Terminal → Run Task…</strong>. Run <strong>A1. Clean</strong> or <strong>B1. Clean</strong> before you start a path. <strong>A2. Start minikube VM and Ollama</strong> starts CPU Ollama in this project and then runs connect. Restart the workspace once so the <code>openshell-ui</code> endpoint exists. Task names stay in English because that is the IDE text.</p>
-      <pre><code>1.  bash scripts/install-openshell-cli.sh
-2.  bash scripts/sandbox-status.sh
-A1. bash scripts/sandbox-down.sh
-A2. bash scripts/sandbox-vm-up.sh
-A3. bash scripts/sandbox-vm-connect.sh
-A4. SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-sandbox.sh
-A5. SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh curl
-A6. SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh python
-A7. SANDBOX_GATEWAY=minikube bash scripts/sandbox-openshell-ui.sh
-A8. SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-inspect.sh
-A9. SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh turns
-B1. bash scripts/sandbox-down.sh
-B2. bash scripts/sandbox-rhel-up.sh
-B3. bash scripts/sandbox-rhel-connect.sh
-B4. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-sandbox.sh
-B5. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh curl
-B6. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh python
-B7. SANDBOX_GATEWAY=microshift bash scripts/sandbox-openshell-ui.sh
-B8. SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh
-B9. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh turns</code></pre>
+    <article class="step" id="workspace">
+      <h2><span>0</span> Open the workspace</h2>
+      <p>Use the button, or in <a href="https://developers.redhat.com/developer-sandbox">Developer Sandbox</a> open <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.28/html/user_guide/assembly_getting-started_user_guide">Dev Spaces</a> and create a workspace from this repository. <code>devfile.yaml</code> requests 512Mi / 200m and limits the tools container to 4Gi / 2 CPUs. Storage is ephemeral. On start it runs <strong>1. Install OpenShell CLI</strong>. The other tasks stay manual (<strong>Terminal → Run Task…</strong>). Run them in the workspace shell: that shell can resolve <code>minikube-vm.&lt;project&gt;.svc.cluster.local</code> and <code>rhel-vm.&lt;project&gt;.svc.cluster.local</code>. A laptop cannot.</p>
+      <p class="expect"><strong>You should see.</strong> Task <strong>1. Install OpenShell CLI</strong> prints an OpenShell 0.1.8 version. The tools container is ready for <strong>Terminal → Run Task…</strong>.</p>
     </article>
 
-    <article class="step" id="fedora">
-      <h2><span>A2</span>Start the Fedora VM and Ollama</h2>
-      <p><code>scripts/sandbox-vm-up.sh</code> prints <code>oc whoami</code> and the quota, then starts CPU Ollama (<code>llama3.2:1b</code>, 4Gi) in this project and applies <code>deploy/sandbox-minikube-vm.yaml</code>. The model pull runs while the guest disk clones, so A5 / A6 do not wait on that image. OpenShift Virtualization clones the <code>fedora</code> DataSource from <code>openshift-virtualization-os-images</code>. There is no custom image. <code>runStrategy</code> is <code>Manual</code>. Inline cloud-init names <code>fedora</code> and curls <code>scripts/minikube-guest-boot.sh</code>.</p>
+    <article class="step" id="commands">
+      <h2>Devfile commands</h2>
+      <p>These are the <code>exec</code> commands under <strong>Terminal → Run Task…</strong>. Task labels match the IDE, so they stay in English on this page. Restart the workspace once so the <code>openshell-ui</code> endpoint exists.</p>
+      <table>
+        <thead><tr><th>What it does</th><th>Fedora (A)</th><th>RHEL (B)</th></tr></thead>
+        <tbody>
+          <tr><td>Install CLI</td><td colspan="2">1. <code>bash scripts/install-openshell-cli.sh</code></td></tr>
+          <tr><td>Project status</td><td colspan="2">2. <code>bash scripts/sandbox-status.sh</code></td></tr>
+          <tr><td>Clean VM and Ollama</td><td>A1. Clean</td><td>B1. Clean</td></tr>
+          <tr><td>Start VM and Ollama</td><td>A2</td><td>B2</td></tr>
+          <tr><td>Connect gateway</td><td>A3</td><td>B3</td></tr>
+          <tr><td>Smoke sandbox</td><td>A4</td><td>B4</td></tr>
+          <tr><td>Ask (models + English)</td><td>A5</td><td>B5</td></tr>
+          <tr><td>Ask (Spanish)</td><td>A6</td><td>B6</td></tr>
+          <tr><td>OpenShell UI</td><td>A7</td><td>B7</td></tr>
+          <tr><td>Inspect</td><td>A8</td><td>B8</td></tr>
+          <tr><td>Two turns</td><td>A9</td><td>B9</td></tr>
+          <tr><td>Delete sandboxes only</td><td>A10</td><td>B10</td></tr>
+        </tbody>
+      </table>
+    </article>
+
+    <h2 class="path-title" id="fedora">Path A · Fedora + minikube</h2>
+    <p>Gateway name <code>minikube</code>. Run A1 first if another <code>u1.large</code> is already Running.</p>
+
+    <article class="step" id="a1">
+      <h2><span>A1</span> Clean</h2>
+      <p>Task <strong>A1. Clean</strong> stops the SSH tunnel and deletes <code>minikube-vm</code>, <code>rhel-vm</code>, Ollama, and objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. It does not delete shared models or the workspace. Run Clean before you start path A or switch guests.</p>
+      <pre data-where="workspace"><code>bash scripts/sandbox-down.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The script prints that labeled hello-openshell objects are gone and that the Dev Spaces workspace is still running.</p>
+      <p class="related">If this fails: <a href="#t-quota">quota</a>.</p>
+    </article>
+
+    <article class="step" id="a2">
+      <h2><span>A2</span> Start the Fedora VM and Ollama</h2>
+      <p>Task <strong>A2. Start minikube VM and Ollama</strong> prints <code>oc whoami</code> and the quota, then starts CPU Ollama (<code>llama3.2:1b</code>, 4Gi) in this project and applies <code>deploy/sandbox-minikube-vm.yaml</code>. The model pull runs while the guest disk clones, so later Ask tasks do not wait on that image. OpenShift Virtualization clones the <code>fedora</code> DataSource from <code>openshift-virtualization-os-images</code>. There is no custom image. <code>runStrategy</code> is <code>Manual</code>. Inline cloud-init names <code>fedora</code> and curls <code>scripts/minikube-guest-boot.sh</code>.</p>
       <table>
         <thead><tr><th>Piece</th><th>Value</th></tr></thead>
         <tbody>
@@ -128,38 +166,179 @@ B9. SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh turns</code></pre>
           <tr><td>Gateway</td><td>Agent Sandbox v1.0.10, OpenShell chart 0.1.8</td></tr>
         </tbody>
       </table>
-      <p>The guest script runs as root. minikube 1.39 needs <code>--force</code> (<code>DRV_AS_ROOT</code>). It stops if <code>landlock</code> is missing from <code>/sys/kernel/security/lsm</code>. Developer Sandbox stops Linux VMs after one hour. If the VM already exists, the script leaves the disk and cloud-init alone, so a new boot script needs <strong>A1. Clean</strong> first. Connect waits up to 40 minutes for <code>/var/lib/hello-openshell/ready</code>. The guest log is <code>/var/log/cloud-init-output.log</code>. If SSH says <code>Offending ED25519 key</code> or <code>Host key verification failed</code>, the guest was recreated and the old key is still in <code>~/.config/hello-openshell/known_hosts</code>. Connect forgets that key. A1. Clean deletes the file. To unblock the current task:</p>
-      <pre><code>ssh-keygen -R minikube-vm.$(oc project -q).svc.cluster.local \
-  -f ~/.config/hello-openshell/known_hosts</code></pre>
+      <p>The guest script runs as root and minikube 1.39 needs <code>--force</code> (<code>DRV_AS_ROOT</code>). That is acceptable for this ephemeral lab, not a production recommendation. The script stops if <code>landlock</code> is missing from <code>/sys/kernel/security/lsm</code>. If the VM already exists, the script leaves the disk and cloud-init alone, so a new boot script needs A1 first. The guest log is <code>/var/log/cloud-init-output.log</code>.</p>
+      <pre data-where="workspace"><code>bash scripts/sandbox-vm-up.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>minikube-vm</code> is Running. Deploy <code>ollama</code> is Ready in this project. The model pull can still be in progress; A2 warms <code>llama3.2:1b</code>.</p>
+      <p class="related">If this fails: <a href="#t-quota">quota</a> · <a href="#t-vm-missing">VM missing</a> · <a href="#t-landlock">landlock</a> · <a href="#t-stopped">VM stopped</a>.</p>
     </article>
-    <article class="step">
-      <h2><span>A4</span>Create the smoke sandbox</h2>
-      <p>Task <strong>A4. Create minikube sandbox</strong> connects the CLI to <code>https://127.0.0.1:8080</code> through an SSH tunnel, selects the gateway <code>minikube</code>, and creates <code>model-check</code>. That sandbox only prints <code>ok</code>. It does not import the Ollama profile yet.</p>
-      <pre><code>openshell gateway select minikube
-openshell sandbox create \
-  --name model-check \
-  --from registry.access.redhat.com/hi/python:3.12 \
-  --policy deploy/hi-python.policy.yaml \
-  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
-      <p>OpenShell 0.1.8 needs Landlock ABI v3 on the guest kernel. Expected result: <code>ok</code> and phase <code>Completed</code>. Task <strong>A8. Inspect cluster</strong> prints the logs.</p>
+
+    <article class="step" id="a3">
+      <h2><span>A3</span> Connect minikube gateway</h2>
+      <p>Task <strong>A3. Connect minikube gateway</strong> waits for <code>/var/lib/hello-openshell/ready</code> (up to 40 minutes), opens an SSH tunnel to <code>https://127.0.0.1:8080</code> inside the workspace, registers gateway <code>minikube</code>, sets <code>server.hostGatewayIP</code>, and starts the guest TCP proxy on port 11434. The tunnel stays local to the workspace; do not expose that port.</p>
+      <pre data-where="workspace"><code>bash scripts/sandbox-vm-connect.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The task prints that gateway <code>minikube</code> is connected. The guest has <code>/var/lib/hello-openshell/ready</code>. Do not Clean if the VM is already Running.</p>
+      <p class="related">If this fails: <a href="#t-ssh">SSH host key</a> · <a href="#t-stopped">VM stopped</a>.</p>
     </article>
+
+    <article class="step" id="a4">
+      <h2><span>A4</span> Create the smoke sandbox</h2>
+      <p>Task <strong>A4. Create minikube sandbox</strong> selects gateway <code>minikube</code> and creates <code>model-check</code>. That sandbox only prints <code>ok</code>. It does not import the Ollama profile yet. OpenShell 0.1.8 needs Landlock ABI v3 on the guest kernel.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-sandbox.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The sandbox prints <code>ok</code> and phase <code>Completed</code>.</p>
+      <p class="related">If this fails: <a href="#t-landlock">landlock</a>.</p>
+    </article>
+
+    <article class="step" id="a5">
+      <h2><span>A5</span> Ask from the sandbox</h2>
+      <p>Task <strong>A5. Ask from the sandbox</strong> imports the Ollama profile, registers the provider, and runs <code>examples/ask.py</code> in sandbox <code>hello-ask</code> (lists models, English prompt). Details are in the <a href="#circuit">circuit</a>.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh curl</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>hello-ask</code> lists models and prints one English sentence, phase <code>Completed</code>. Observed 12 November 2026 on Developer Sandbox. A 1b answer can be short or off-topic; completion is the success signal. <code>already exists</code> on profile import is success.</p>
+      <p class="related">If this fails: <a href="#t-cold">cold model load</a> · <a href="#t-exists">already exists</a> · <a href="#t-env">reserved env</a>.</p>
+    </article>
+
+    <article class="step" id="a6">
+      <h2><span>A6</span> Ask with ask.py</h2>
+      <p>Task <strong>A6. Ask with ask.py</strong> is the same circuit with sandbox <code>hello-agent</code> and a Spanish prompt.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh python</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>hello-agent</code> prints one Spanish sentence, phase <code>Completed</code>. Observed 12 November 2026 on Developer Sandbox.</p>
+      <p class="related">If this fails: <a href="#t-cold">cold model load</a> · <a href="#t-exists">already exists</a>.</p>
+    </article>
+
+    <article class="step" id="a7">
+      <h2><span>A7</span> OpenShell UI</h2>
+      <p>OpenShell 0.1.8 has no web console. Task <strong>A7. OpenShell UI</strong> runs <code>openshell term</code> inside ttyd on port 7681. Dev Spaces publishes the <code>openshell-ui</code> endpoint as a Route. Anyone who can reach that Route can open the TUI. Open it from PORTS or the Route host, leave the task running, and stop the task when you finish.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-openshell-ui.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The Route opens a terminal running <code>openshell term</code>.</p>
+    </article>
+
+    <article class="step" id="a8">
+      <h2><span>A8</span> Inspect cluster</h2>
+      <p>Task <strong>A8. Inspect cluster</strong> prints the OpenShift VM, the Ollama deploy, gateway status, sandbox list, and logs for <code>model-check</code>, <code>hello-ask</code>, <code>hello-agent</code>, and <code>hello-turns</code>.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-inspect.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>minikube-vm</code> Running, Ollama pods, <code>openshell sandbox list</code>, and log lines from the sandboxes that exist.</p>
+    </article>
+
+    <article class="step" id="a9">
+      <h2><span>A9</span> Ask two turns</h2>
+      <p>Task <strong>A9. Ask two turns</strong> creates sandbox <code>hello-turns</code> and runs <code>examples/ask_turns.py</code>: two POSTs in the same process. The second turn uses the first answer. Default follow-up: why that agent should not have its own network.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh turns</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>Turn 1:</code> then <code>Turn 2:</code>, phase <code>Completed</code>. Same 1b caveat as A5 / A6. This task was added after the 12 November 2026 A5 / A6 run; re-run it on Developer Sandbox to confirm the printed turns.</p>
+      <p class="related">If this fails: <a href="#t-cold">cold model load</a>.</p>
+    </article>
+
+    <article class="step" id="a10">
+      <h2><span>A10</span> Delete sandboxes</h2>
+      <p>Task <strong>A10. Delete sandboxes</strong> removes <code>hello-ask</code>, <code>hello-agent</code>, <code>hello-turns</code>, and <code>model-check</code> on gateway <code>minikube</code>. It does not stop the VM or Ollama. The next Ask task deletes and recreates its own name.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=minikube bash scripts/sandbox-delete.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The second <code>openshell sandbox list</code> no longer shows those four names. <code>minikube-vm</code> is still Running.</p>
+    </article>
+
+    <h2 class="path-title" id="rhel">Path B · RHEL + MicroShift</h2>
+    <p>Gateway name <code>microshift</code>. Quota cannot hold two <code>u1.large</code> VMs plus Ollama. If <code>minikube-vm</code> is Running, run B1 first. Path B also needs a Red Hat pull secret: a personal credential. Do not commit it, paste it in issues, or share it. Workspace storage is ephemeral: deleting the workspace removes the copy on that volume.</p>
+
+    <article class="step" id="b1">
+      <h2><span>B1</span> Clean</h2>
+      <p>Task <strong>B1. Clean</strong> runs the same script as A1. Use it before path B if Fedora is still Running.</p>
+      <pre data-where="workspace"><code>bash scripts/sandbox-down.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> Labeled hello-openshell objects are gone. The Dev Spaces workspace is still running.</p>
+      <p class="related">If this fails: <a href="#t-quota">quota</a>.</p>
+    </article>
+
+    <article class="step" id="b-secret">
+      <h2><span>B</span> Pull secret</h2>
+      <p>Download a Red Hat pull secret from <a href="https://console.redhat.com/openshift/install/pull-secret">console.redhat.com/openshift/install/pull-secret</a>. Save it in the Dev Spaces terminal before B3.</p>
+      <pre data-where="workspace"><code>mkdir -p ~/.config/hello-openshell
+# paste the JSON into ~/.config/hello-openshell/openshift-pull-secret
+chmod 600 ~/.config/hello-openshell/openshift-pull-secret</code></pre>
+      <p class="expect"><strong>You should see.</strong> The file is JSON with an <code>auths</code> object. Mode 600.</p>
+      <p class="related">If this fails later: <a href="#t-pull-secret">guest has no pull secret</a>.</p>
+    </article>
+
+    <article class="step" id="b2">
+      <h2><span>B2</span> Start the RHEL VM and Ollama</h2>
+      <p>Task <strong>B2. Start RHEL VM and Ollama</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code> and starts CPU Ollama in this project so later Ask tasks do not wait on the model pull. The guest is <code>rhel-vm</code>, cloned from DataSource <code>rhel9</code> with preference <code>rhel.9</code>. Login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>. The workspace SSH key is the same as the Fedora VM. If the VM object already exists, B2 leaves the disk and cloud-init alone and only starts it. Developer Sandbox stops Linux VMs after one hour; run B2 again when the status is Stopped.</p>
+      <pre data-where="workspace"><code>bash scripts/sandbox-rhel-up.sh</code></pre>
+      <pre data-where="workspace"><code>ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
+  cloud-user@rhel-vm.$(oc project -q).svc.cluster.local</code></pre>
+      <p>From a laptop, <code>oc port-forward svc/rhel-vm 2222:22</code> and SSH to <code>127.0.0.1</code> on port 2222. Wait until the VM is Running before B4.</p>
+      <p class="expect"><strong>You should see.</strong> <code>rhel-vm</code> is Running. Deploy <code>ollama</code> is Ready in this project.</p>
+      <p class="related">If this fails: <a href="#t-quota">quota</a> · <a href="#t-stopped">VM stopped</a>.</p>
+    </article>
+
+    <article class="step" id="b3">
+      <h2><span>B3</span> Connect MicroShift</h2>
+      <p>This guest does not install minikube. The catalog image has no subscription, so <code>scripts/microshift-guest-boot.sh</code> takes MicroShift 4.22 from <code>mirror.openshift.com</code> and base packages from AlmaLinux 9 (<code>rpm --replacefiles</code> for one GPG conflict). <strong>B3 fails immediately</strong> unless the pull-secret file is Red Hat JSON with <code>auths</code>. MicroShift pulls <code>quay.io/openshift-release-dev</code>. Cloud-init and B3 share a lock so they do not fight over <code>/var/lib/rpm/.rpm.lock</code>. If the VM is Stopped, B3 starts it again. Leave the task running; first boot can take tens of minutes. The disk has no LVM volume group; the gateway volume is hostPath. Pin <code>rhel-vm</code> in the guest <code>/etc/hosts</code> (the boot script does this). A sandbox workspace claim is 2Gi on hostPath.</p>
+      <pre data-where="workspace"><code>bash scripts/sandbox-rhel-connect.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The task prints that gateway <code>microshift</code> is connected.</p>
+      <p class="related">If this fails: <a href="#t-pull-secret">pull secret</a> · <a href="#t-stopped">VM stopped</a> · <a href="#t-ssh">SSH host key</a> · <a href="#t-rpm">RPM lock</a>.</p>
+    </article>
+
+    <article class="step" id="b4">
+      <h2><span>B4</span> Create the smoke sandbox</h2>
+      <p>Same smoke test as A4 on gateway <code>microshift</code>.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-sandbox.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>ok</code> and phase <code>Completed</code>.</p>
+      <p class="related">If this fails: <a href="#t-landlock">landlock</a>.</p>
+    </article>
+
+    <article class="step" id="b5">
+      <h2><span>B5</span> Ask from the sandbox</h2>
+      <p>Same circuit as A5 on gateway <code>microshift</code>. See the <a href="#circuit">circuit</a>.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh curl</code></pre>
+      <p class="expect"><strong>You should see.</strong> The same A5 signals on gateway <code>microshift</code>. Path B Ask was not re-run on 12 November 2026; confirm <code>Completed</code> on this gateway before treating the wording as verified.</p>
+      <p class="related">If this fails: <a href="#t-cold">cold model load</a> · <a href="#t-exists">already exists</a>.</p>
+    </article>
+
+    <article class="step" id="b6">
+      <h2><span>B6</span> Ask with ask.py</h2>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh python</code></pre>
+      <p class="expect"><strong>You should see.</strong> Same A6 signals on <code>microshift</code>.</p>
+      <p class="related">If this fails: <a href="#t-cold">cold model load</a>.</p>
+    </article>
+
+    <article class="step" id="b7">
+      <h2><span>B7</span> OpenShell UI</h2>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-openshell-ui.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> The Route opens <code>openshell term</code>. Stop the task when you finish.</p>
+    </article>
+
+    <article class="step" id="b8">
+      <h2><span>B8</span> Inspect cluster</h2>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-vm-inspect.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>rhel-vm</code> Running, Ollama, sandbox list, and logs.</p>
+    </article>
+
+    <article class="step" id="b9">
+      <h2><span>B9</span> Ask two turns</h2>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-ask.sh turns</code></pre>
+      <p class="expect"><strong>You should see.</strong> <code>Turn 1:</code> then <code>Turn 2:</code>.</p>
+      <p class="related">If this fails: <a href="#t-cold">cold model load</a>.</p>
+    </article>
+
+    <article class="step" id="b10">
+      <h2><span>B10</span> Delete sandboxes</h2>
+      <p>Same as A10 on gateway <code>microshift</code>. Does not stop <code>rhel-vm</code> or Ollama.</p>
+      <pre data-where="workspace"><code>SANDBOX_GATEWAY=microshift bash scripts/sandbox-delete.sh</code></pre>
+      <p class="expect"><strong>You should see.</strong> Those four sandbox names are gone. <code>rhel-vm</code> is still Running.</p>
+    </article>
+
     <article class="step" id="circuit">
-      <h2><span>A5</span>Profile, provider, and agent</h2>
-      <p>Tasks <strong>A5 / A6</strong> and <strong>B5 / B6</strong> are the same path as <code>make ask</code>. After the gateway is connected they add the Ollama profile, register the provider, create the agent sandbox, and run <code>examples/ask.py</code> inside it. You can run the same commands in the workspace terminal.</p>
+      <h2>Circuit: profile, provider, and agent</h2>
+      <p>A5 / A6 / A9 and B5 / B6 / B9 follow the same path as <code>make ask</code>. After the gateway is connected they add the Ollama profile, register the provider, create the agent sandbox, and run the Python client inside it. You can run the same commands in the workspace terminal.</p>
       <figure>
         <img src="assets/diagrams/sandbox-ask-flow.svg" alt="Profile ollama, provider, agent sandbox, ask.py, policy, supervisor, Ollama">
         <figcaption>The agent runs in the sandbox. The sandbox has no network of its own. The supervisor dials the guest; a proxy there reaches Ollama in this project.</figcaption>
       </figure>
       <h3>1. Import the profile and create the provider</h3>
       <p><code>deploy/ollama.profile.yaml</code> allows only <code>host.openshell.internal:11434</code> (REST, enforce). It lists Python 3 binaries and stores no key. Do not put <code>127.0.0.1</code> or <code>localhost</code> in a profile: OpenShell always blocks loopback from the sandbox.</p>
-      <pre><code>openshell profile lint -f deploy/ollama.profile.yaml
+      <pre data-where="workspace"><code>openshell profile lint -f deploy/ollama.profile.yaml
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
-      <p>Ask tasks skip import if the profile is already on the gateway or the CLI. <code>already exists</code> is success, not a failure. They do not run <code>openshell gateway remove</code> when the gateway is already connected.</p>
+      <p>Ask tasks skip import if the profile is already on the gateway or the CLI. <code>already exists</code> is success. They do not run <code>openshell gateway remove</code> when the gateway is already connected.</p>
       <h3>2. Create the agent sandbox</h3>
-      <p>The agent is not a separate CR. It is an OpenShell sandbox from <code>registry.access.redhat.com/hi/python:3.12</code> with <code>--provider ollama</code> and <code>--policy deploy/hi-python.policy.yaml</code>. A5 names it <code>hello-ask</code> (lists models, English prompt). A6 names it <code>hello-agent</code> (Spanish prompt). A9 names it <code>hello-turns</code> and runs <code>examples/ask_turns.py</code>: two POSTs in the same sandbox, the second using the first answer. The process is inlined as <code>python3.12 -c</code>.</p>
-      <pre><code>openshell sandbox create \
+      <p>The agent is not a separate CR. It is an OpenShell sandbox from <code>registry.access.redhat.com/hi/python:3.12</code> with <code>--provider ollama</code> and <code>--policy deploy/hi-python.policy.yaml</code>. A5 names it <code>hello-ask</code>. A6 names it <code>hello-agent</code>. A9 names it <code>hello-turns</code> and runs <code>examples/ask_turns.py</code>. The process is inlined as <code>python3.12 -c</code>.</p>
+      <pre data-where="workspace"><code>openshell sandbox create \
   --name hello-agent \
   --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
@@ -175,85 +354,73 @@ openshell provider get ollama</code></pre>
         <li><code>ask.py</code> reads <code>OPENAI_BASE_URL</code> and POSTs <code>/v1/chat/completions</code> (A5 also GETs <code>/v1/models</code>).</li>
         <li>The profile allows that host and port. The policy allows <code>/usr/bin/python3.12</code>.</li>
         <li>The supervisor on the guest dials <code>host.openshell.internal:11434</code>. Connect sets OpenShell <code>server.hostGatewayIP</code> so Kubernetes sandbox pods can resolve that name (they have no DNS of their own).</li>
-        <li><strong>A2</strong> or <strong>B2</strong> applies <code>deploy/sandbox-ollama.yaml</code> (CPU Ollama <code>llama3.2:1b</code>, 4Gi, GPU quota 0) and runs a generate in the pod so the model is already in memory. A cold <code>/chat/completions</code> through the supervisor is closed before the first token. Connect installs a TCP proxy on the guest so <code>:11434</code> forwards to the Ollama ClusterIP in this project. The 1b model does not compete for the guest's 8Gi.</li>
+        <li>A2 or B2 applies <code>deploy/sandbox-ollama.yaml</code> (CPU Ollama <code>llama3.2:1b</code>, 4Gi, GPU quota 0) and runs a generate in the pod so the model is already in memory. A cold <code>/chat/completions</code> through the supervisor is closed before the first token. Connect installs a TCP proxy on the guest so <code>:11434</code> forwards to the Ollama ClusterIP in this project. The 1b model does not compete for the guest's 8Gi.</li>
         <li>Ollama answers. The sandbox never has a route of its own.</li>
       </ol>
     </article>
-    <article class="step">
-      <h2><span>A7</span>OpenShell UI</h2>
-      <p>OpenShell 0.1.8 has no web console. Task <strong>A7. OpenShell UI</strong> (or <strong>B7</strong>) runs <code>openshell term</code> inside ttyd on port 7681. Dev Spaces publishes the <code>openshell-ui</code> endpoint as a Route. Open it from PORTS or the Route host. Leave the task running.</p>
+
+    <article class="step" id="troubleshooting">
+      <h2>Troubleshooting</h2>
+      <table>
+        <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr id="t-ssh"><td><code>Offending ED25519 key</code> or <code>Host key verification failed</code></td><td>The guest was recreated; the old key is still in <code>known_hosts</code></td><td>Connect forgets the key. A1 deletes the file. To unblock now: <code>ssh-keygen -R &lt;vm&gt;.$(oc project -q).svc.cluster.local -f ~/.config/hello-openshell/known_hosts</code></td></tr>
+          <tr id="t-pull-secret"><td>B3: <code>The guest has no pull secret</code></td><td>The pull-secret file is missing or has no <code>auths</code></td><td>Fix the file, run B3 again. No Clean</td></tr>
+          <tr id="t-stopped"><td>SSH <code>Connection refused</code> and <code>vm=Stopped</code></td><td>Developer Sandbox stopped the Linux VM after one hour</td><td>Run A2 or B2, then Connect. No Clean</td></tr>
+          <tr id="t-rpm"><td><code>/var/lib/rpm/.rpm.lock</code></td><td>cloud-init and B3 raced</td><td>Wait, run B3 again. No Clean</td></tr>
+          <tr id="t-landlock"><td>Guest script stops: no landlock</td><td>The kernel does not list <code>landlock</code> in <code>/sys/kernel/security/lsm</code></td><td>Use Developer Sandbox with a VM. Cloud Shell cannot run a sandbox</td></tr>
+          <tr id="t-quota"><td>Quota error creating the VM</td><td>Another <code>u1.large</code> is already Running</td><td>A1 / B1 Clean, then start the path again</td></tr>
+          <tr id="t-cold"><td><code>GET /v1/models</code> works, then POST closes before the first token</td><td>Cold load of <code>llama3.2:1b</code> through the supervisor</td><td>A2 / B2 keep the model loaded and warm it. Re-run Ask; do not Clean</td></tr>
+          <tr id="t-exists"><td><code>already exists</code> on profile or provider import</td><td>The object is already on the gateway</td><td>Success. Continue</td></tr>
+          <tr id="t-vm-missing"><td><code>minikube-vm</code> is missing</td><td>The VM object is gone</td><td>Run A2. Do not Clean: that also deletes Ollama</td></tr>
+          <tr id="t-env"><td><code>OPENSHELL_*</code> env is reserved</td><td>The CLI owns those keys</td><td>Use <code>ASK_HOST_IP</code> (already in the Ask scripts)</td></tr>
+        </tbody>
+      </table>
     </article>
 
-    <article class="step" id="rhel">
-      <h2><span>B</span>RHEL + MicroShift, in order</h2>
-      <p>Quota cannot hold two <code>u1.large</code> VMs plus Ollama. If <code>minikube-vm</code> is Running, run <strong>B1. Clean</strong> first. Then:</p>
-      <ol>
-        <li>Download a Red Hat pull secret from <a href="https://console.redhat.com/openshift/install/pull-secret">console.redhat.com/openshift/install/pull-secret</a>.</li>
-        <li>In the Dev Spaces terminal, save it before Connect:
-          <pre><code>mkdir -p ~/.config/hello-openshell
-# paste the JSON into ~/.config/hello-openshell/openshift-pull-secret
-chmod 600 ~/.config/hello-openshell/openshift-pull-secret</code></pre>
-        </li>
-        <li><strong>B2. Start RHEL VM and Ollama</strong> — creates <code>rhel-vm</code> or starts it if it already exists, and starts CPU Ollama in this project. Developer Sandbox stops Linux VMs after one hour; run B2 again when the status is Stopped.</li>
-        <li>Wait until the VM is Running. Do not start B4 yet.</li>
-        <li><strong>B3. Connect MicroShift</strong> — copies the pull secret, waits for cloud-init (one RPM lock), installs MicroShift if needed, and registers the gateway <code>microshift</code>. Leave it running; first boot can take tens of minutes.</li>
-        <li>If B3 prints <code>The guest has no pull secret</code>, the file in step 2 is missing or has no <code>auths</code>. Fix the file, then B3 again. No Clean.</li>
-        <li>If SSH says <code>Connection refused</code> and <code>vm=Stopped</code>, run B2, then B3. No Clean.</li>
-        <li>If SSH says <code>Offending ED25519 key</code> or <code>Host key verification failed</code>, the guest was recreated. Connect forgets the old key in <code>~/.config/hello-openshell/known_hosts</code>. No Clean. To unblock now: <code>ssh-keygen -R rhel-vm.$(oc project -q).svc.cluster.local -f ~/.config/hello-openshell/known_hosts</code>.</li>
-        <li>If you see <code>/var/lib/rpm/.rpm.lock</code>, cloud-init and B3 raced. Wait, then B3 again. The guest script now waits on that lock.</li>
-        <li>When B3 prints that the gateway is up, run <strong>B4</strong>, then <strong>B5 / B6</strong> (same <a href="#circuit">profile, provider, and agent</a> circuit), then B7 / B8 if you want the TUI or logs.</li>
-      </ol>
-    </article>
-    <article class="step">
-      <h2><span>B2</span>RHEL VM and Ollama</h2>
-      <p>Task <strong>B2. Start RHEL VM and Ollama</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code> and starts CPU Ollama in this project so B5 / B6 do not wait on the model pull. The guest is <code>rhel-vm</code>, cloned from DataSource <code>rhel9</code> with preference <code>rhel.9</code>. Login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>. The workspace SSH key is the same as the Fedora VM. If the VM object already exists, B2 leaves the disk and cloud-init alone and only starts it.</p>
-      <pre><code>bash scripts/sandbox-rhel-up.sh
-ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
-  cloud-user@rhel-vm.$(oc project -q).svc.cluster.local</code></pre>
-      <p>From a laptop, <code>oc port-forward svc/rhel-vm 2222:22</code> and SSH to <code>127.0.0.1</code> on port 2222.</p>
-    </article>
-    <article class="step">
-      <h2><span>B3</span>Connect MicroShift</h2>
-      <p>This guest does not install minikube. The catalog image has no subscription, so <code>scripts/microshift-guest-boot.sh</code> takes MicroShift 4.22 from <code>mirror.openshift.com</code> and base packages from AlmaLinux 9 (<code>rpm --replacefiles</code> for one GPG conflict). <strong>B3 fails immediately</strong> unless <code>~/.config/hello-openshell/openshift-pull-secret</code> is a Red Hat pull-secret JSON with <code>auths</code>. MicroShift pulls <code>quay.io/openshift-release-dev</code>; an empty secret is rejected. Cloud-init and B3 share a lock so they do not fight over <code>/var/lib/rpm/.rpm.lock</code>. If the VM is Stopped, B3 starts it again.</p>
-      <pre><code>bash scripts/sandbox-rhel-connect.sh
-openshell gateway add https://127.0.0.1:8080 --local --name microshift
-openshell gateway select microshift</code></pre>
-      <p>The disk has no LVM volume group and no storage provisioner. The gateway volume is hostPath. Pin <code>rhel-vm</code> in the guest <code>/etc/hosts</code> (the boot script does this) so the API server does not dial the Service when it looks up the node. A sandbox workspace claim is 2Gi on hostPath.</p>
-    </article>
-    <article class="step">
-      <h2><span>B4</span>Sandbox and Ask on MicroShift</h2>
-      <p>After <strong>B3</strong>, run <strong>B4</strong> for the smoke sandbox, then <strong>B5 / B6</strong> for the same <a href="#circuit">profile, provider, and agent</a> circuit on the <code>microshift</code> gateway. Those tasks set <code>SANDBOX_GATEWAY=microshift</code> so they do not pick minikube. Expected smoke test: <code>ok</code> and phase <code>Completed</code>.</p>
-      <pre><code>openshell gateway select microshift
-openshell sandbox create \
-  --name model-check \
-  --from registry.access.redhat.com/hi/python:3.12 \
-  --policy deploy/hi-python.policy.yaml \
-  -- /usr/bin/python3.12 -c 'print("ok")'</code></pre>
-    </article>
+    <section class="glossary" id="glossary">
+      <h2>Glossary</h2>
+      <p>Meanings as this workshop uses OpenShell 0.1.8. Confirm against <a href="https://docs.nvidia.com/openshell/">OpenShell documentation</a> when a new CLI ships.</p>
+      <dl>
+        <dt>Gateway</dt>
+        <dd>The OpenShell control plane that creates sandboxes. Here it runs inside the guest cluster (minikube or MicroShift), not in the Developer Sandbox project.</dd>
+        <dt>Sandbox</dt>
+        <dd>The isolated process where the agent runs. It has no network of its own and follows the policy and profile.</dd>
+        <dt>Supervisor</dt>
+        <dd>On the guest. It makes the allowed outbound connection. Here that hits a TCP proxy on the guest that forwards to Ollama in this OpenShift project.</dd>
+        <dt>Policy</dt>
+        <dd><code>deploy/hi-python.policy.yaml</code> — filesystem and UID. The hardened image runs as 65532/65532.</dd>
+        <dt>Profile</dt>
+        <dd><code>deploy/ollama.profile.yaml</code> — the only host the sandbox may ask the supervisor to dial: <code>host.openshell.internal:11434</code>. No credential. Loopback is always blocked.</dd>
+        <dt>Provider</dt>
+        <dd><code>openshell provider create --name ollama --type ollama</code> — registers Ollama as the named inference backend on this gateway.</dd>
+        <dt>Agent</dt>
+        <dd>An OpenShell sandbox (<code>hello-ask</code>, <code>hello-agent</code>, or <code>hello-turns</code>) that runs <code>examples/ask.py</code> or <code>examples/ask_turns.py</code>.</dd>
+        <dt>Landlock</dt>
+        <dd>Linux kernel restriction OpenShell 0.1.8 needs (ABI v3). Cloud Shell does not expose it; the guest VM does.</dd>
+        <dt>hostGatewayIP</dt>
+        <dd>The address Connect injects so sandbox pods can resolve <code>host.openshell.internal</code>. Kubernetes sandboxes have no DNS of their own.</dd>
+        <dt>DataSource</dt>
+        <dd>OpenShift Virtualization object that names the clonable disk image (<code>fedora</code> or <code>rhel9</code>).</dd>
+        <dt>MicroShift</dt>
+        <dd>A small OpenShift distribution. Path B runs MicroShift 4.22 inside <code>rhel-vm</code>.</dd>
+      </dl>
+    </section>
 
-    <article class="step" id="delete-sandboxes">
-      <h2><span>A5–A9</span>Delete sandboxes</h2>
-      <p>Deleting a sandbox does not stop the VM or Ollama. It only removes that OpenShell workload on the gateway. The next Ask task deletes and recreates its own name (<code>hello-ask</code>, <code>hello-agent</code>, <code>hello-turns</code>).</p>
-      <pre><code>export PATH="${HOME}/.local/bin:${PATH}"
-openshell gateway select minikube
-openshell sandbox list
-openshell sandbox delete hello-ask hello-agent hello-turns model-check
-openshell sandbox list</code></pre>
-      <p>On the RHEL path, select <code>microshift</code> instead of <code>minikube</code>. A1 / B1 Clean still deletes the VMs and Ollama.</p>
-    </article>
-    <article class="step">
-      <h2><span>A1 / B1</span>Clean</h2>
-      <p>Tasks <strong>A1. Clean</strong> and <strong>B1. Clean</strong> run the same script. They stop the SSH tunnel and delete <code>minikube-vm</code>, <code>rhel-vm</code>, Ollama, and objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. They do not delete shared models or the workspace. Run Clean before you switch guests.</p>
-    </article>
-    <section class="note warn">
+    <section class="note warn" id="gateway">
       <p><strong>Gateway.</strong> A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and <code>agents.x-k8s.io</code> is not served, so Helm chart 0.1.8 cannot install in the project itself. The chart runs inside the guest (minikube or MicroShift). Do not pass OpenShift SCC values into minikube. A cluster you administer is the <a href="openshift/index.html">OpenShift AI</a> module. Cloud Shell cannot run a sandbox: that kernel lacks Landlock.</p>
     </section>
-  </main>
-  <footer>
+    </main>
+  </div>
+  <footer id="about">
     <div class="wrap">
+      <p class="about"><a href="https://github.com/maximilianoPizarro/hello-openshell">github.com/maximilianoPizarro/hello-openshell</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/issues">Issues</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/LICENSE">Apache-2.0</a></p>
+      <p>Last verified 12 November 2026 on Developer Sandbox with OpenShell 0.1.8, minikube 1.39.0, Agent Sandbox v1.0.10, and MicroShift 4.22. Path A Ask (A5 / A6) completed that day. A9 / A10 and path B Ask still need a live re-run on this tree.</p>
+      <p>When OpenShell, minikube, MicroShift, or Agent Sandbox ships a new version: pin it in the guest scripts, re-run A4 then A5 on Developer Sandbox, and update this date. Do not bump the chart until A5 completes.</p>
       <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
       <p class="legal">NVIDIA and OpenShell are trademarks of NVIDIA Corporation. Red Hat, OpenShift, OpenShift Dev Spaces, RHEL, and Fedora are trademarks of Red Hat, Inc. Product marks used here name those products. Podman is a trademark of Red Hat, Inc. Python and the Python logo are trademarks of the Python Software Foundation.</p>
     </div>
   </footer>
+  <script src="js/site.js"></script>
 </body>
 </html>

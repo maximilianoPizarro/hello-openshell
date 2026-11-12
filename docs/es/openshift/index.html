@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="../../css/site.css">
 </head>
 <body>
+  <a class="skip" href="#content">Saltar al contenido</a>
   <header class="top">
     <div class="wrap bar">
       <a class="brand" href="../index.html">
@@ -53,7 +54,7 @@
       </nav>
     </div>
   </header>
-  <main class="wrap">
+  <main id="content" class="wrap">
     <section class="hero">
       <p class="kicker">Admin del clúster · OpenShift 4.19+</p>
       <h1>OpenShift AI</h1>
@@ -74,50 +75,70 @@
         <tr><td>Agent Sandbox</td><td>v1.0.10 <code>sandbox.yaml</code></td></tr>
       </tbody>
     </table>
-    <article class="step">
-      <h2><span>1</span>Servir el modelo</h2>
+    <article class="step" id="serve">
+      <h2><span>1</span> Servir el modelo</h2>
       <p>Hace falta <code>cluster-admin</code>, Helm 3, la <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/configuring_your_model-serving_platform/configuring-your-model-serving-platform_rhoai-admin">plataforma de model serving</a> y el <a href="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/openshift/install-gpu-operator.html">GPU Operator</a>. Confirmá el <code>hardwareProfile</code> <code>nvidia-gpu-serving</code> en <code>redhat-ods-applications</code>.</p>
-      <pre><code>helm upgrade --install granite-2b redhat-ai-services/vllm-kserve \
+      <pre data-where="command"><code>helm upgrade --install granite-2b redhat-ai-services/vllm-kserve \
   --version 0.7.1 --namespace rhoai-models \
   --values deploy/granite-2b-values.yaml --timeout 20m</code></pre>
       <p>El chart 0.7.1 deja la autenticación activa. Leé <code>MODEL_HOST</code> y <code>MODEL_PORT</code> del Service. Un Service headless usa el <code>targetPort</code> 8080. Esos valores van en <code>deploy/rhoai-granite.profile.yaml</code> antes de importar. No imprimas el token.</p>
+      <p class="expect"><strong>Vas a ver.</strong> Helm termina y el InferenceService de Granite queda Ready. Este camino pide un cluster que administrás; Developer Sandbox no lo puede instalar.</p>
     </article>
-    <article class="step">
-      <h2><span>2</span>Agent Sandbox y el gateway</h2>
-      <pre><code>oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
+    <article class="step" id="gateway">
+      <h2><span>2</span> Agent Sandbox y el gateway</h2>
+      <pre data-where="command"><code>oc apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart \
   --version 0.1.8 --namespace openshell \
   --values deploy/openshift-scc-values.yaml</code></pre>
       <p><code>deploy/openshift-scc-values.yaml</code> borra <code>podSecurityContext</code> y <code>runAsUser</code>. Pasarlos en <code>--set</code> como <code>null</code> deja el UID 1000 del chart, y <code>restricted-v2</code> lo rechaza.</p>
+      <p class="expect"><strong>Vas a ver.</strong> El chart 0.1.8 queda instalado en el namespace <code>openshell</code> sin el SCC <code>privileged</code>.</p>
+      <p class="related">Si falla: <a href="#t-scc">restricted-v2</a>.</p>
     </article>
-    <article class="step">
-      <h2><span>3</span>CLI, mTLS y provider</h2>
+    <article class="step" id="cli">
+      <h2><span>3</span> CLI, mTLS y provider</h2>
       <p>Port-forward de <code>svc/openshell</code> <code>8080:8080</code>. Copiá <code>openshell-client-tls</code> a <code>~/.config/openshell/gateways/openshift/mtls/</code>. Después:</p>
-      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name openshift
+      <pre data-where="command"><code>openshell gateway add https://127.0.0.1:8080 --local --name openshift
 openshell gateway select openshift
 openshell provider create --name rhoai-granite --type rhoai-granite \
   --credential RHOAI_API_TOKEN
 unset RHOAI_API_TOKEN</code></pre>
       <p>Publicar un gateway compartido está en <a href="https://docs.nvidia.com/openshell/kubernetes/openshift">OpenShell on OpenShift</a>.</p>
+      <p class="expect"><strong>Vas a ver.</strong> El gateway <code>openshift</code> está Connected. El token está en el provider, no en el env del sandbox.</p>
     </article>
-    <article class="step">
-      <h2><span>4</span>Sandbox y ask.py</h2>
+    <article class="step" id="ask">
+      <h2><span>4</span> Sandbox y ask.py</h2>
       <p><code>model-check</code> usa <code>ubi9/toolbox</code> y <code>/usr/bin/curl</code>. <code>hello-agent</code> usa <code>ubi9/python-312</code> y <code>/opt/app-root/bin/python3</code>. El shell expande <code>MODEL_HOST</code>. <code>\${RHOAI_API_TOKEN}</code> llega literal hasta el bash del sandbox. Todos los comandos están en <a href="../../openshift-ai.md">openshift-ai.md</a>.</p>
+      <p class="expect"><strong>Vas a ver.</strong> <code>model-check</code> y <code>hello-agent</code> completan. El sandbox solo ve el token placeholder.</p>
     </article>
-    <article class="step">
-      <h2><span>5</span>Desinstalar</h2>
-      <pre><code>helm uninstall openshell -n openshell
+    <article class="step" id="uninstall">
+      <h2><span>5</span> Desinstalar</h2>
+      <pre data-where="command"><code>helm uninstall openshell -n openshell
 helm uninstall granite-2b -n rhoai-models
 oc delete namespace openshell rhoai-models
 oc delete -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml</code></pre>
       <p>Eso deja OpenShift AI y el GPU Operator como estaban.</p>
+      <p class="expect"><strong>Vas a ver.</strong> Los namespaces <code>openshell</code> y <code>rhoai-models</code> ya no están. OpenShift AI sigue instalado.</p>
+    </article>
+    <article class="step" id="troubleshooting">
+      <h2>Problemas</h2>
+      <table>
+        <thead><tr><th>Síntoma</th><th>Causa probable</th><th>Arreglo</th></tr></thead>
+        <tbody>
+          <tr id="t-scc"><td>Los pods del gateway los rechaza <code>restricted-v2</code></td><td><code>--set</code> dejó el UID 1000 del chart</td><td>Usá <code>deploy/openshift-scc-values.yaml</code>, que borra esas claves</td></tr>
+          <tr id="t-token"><td>El proceso del sandbox imprime un token real</td><td>El token se pasó en <code>--env</code></td><td>Ponelo en el provider con <code>--credential</code> y después <code>unset</code></td></tr>
+        </tbody>
+      </table>
     </article>
   </main>
   <footer>
     <div class="wrap">
+      <p class="about"><a href="https://github.com/maximilianoPizarro/hello-openshell">github.com/maximilianoPizarro/hello-openshell</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/issues">Issues</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/LICENSE">Apache-2.0</a></p>
+      <p>Referencia de admin para OpenShell 0.1.8 en OpenShift AI. Contrastada con este árbol el 12 de noviembre de 2026. No es una corrida en vivo en Developer Sandbox: aplicála en un cluster que administrés.</p>
+      <p>Cuando el chart de OpenShell o vllm-kserve saquen una versión nueva, fijala acá después de una instalación en vivo y actualizá esta fecha.</p>
       <p>Guía independiente, no afiliada ni respaldada por NVIDIA, Red Hat ni Python Software Foundation.</p>
       <p class="legal">Red Hat y OpenShift son marcas de Red Hat, Inc. Las marcas de NVIDIA están en la <a href="../index.html">página local</a>. Esta página no incluye esos archivos de logo.</p>
     </div>
   </footer>
+  <script src="../../js/site.js"></script>
 </body>
 </html>

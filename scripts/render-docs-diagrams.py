@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGO = ROOT / "docs" / "assets" / "logos"
@@ -20,6 +21,13 @@ BAR = "#ee0000"
 ACCENT = "#0066cc"
 GREEN = "#76b900"
 DENY = "#c9190b"
+SUCCESS = "#3e8635"
+SUCCESS_BG = "#1b2b1b"
+GOLD = "#f0ab00"
+GOLD_BG = "#2a2208"
+PURPLE = "#5752d1"
+PURPLE_BG = "#1c1833"
+INSET = "#151515"
 
 
 def data_uri(path: Path, *, on_dark: bool = False) -> str:
@@ -87,24 +95,28 @@ def defs() -> str:
   <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
     <path d="M 0 0 L 10 5 L 0 10 z" fill="{ACCENT}"/>
   </marker>
+  <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="{GREEN}"/>
+  </marker>
 </defs>"""
 
 
-def svg(width: int, height: int, title: str, body: str) -> str:
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="{title}">
-  <title>{title}</title>
+def svg(width: int, height: int, title: str, body: str, *, bare: bool = False) -> str:
+    head = "" if bare else header(title, width)
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="{escape(title)}">
+  <title>{escape(title)}</title>
   <rect width="{width}" height="{height}" fill="{BG}"/>
   {defs()}
-  {header(title, width)}
+  {head}
   {body}
 </svg>
 """
 
 
-def write(name: str, width: int, height: int, title: str, body: str) -> None:
+def write(name: str, width: int, height: int, title: str, body: str, *, bare: bool = False) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     path = OUT / name
-    path.write_text(svg(width, height, title, body), encoding="utf-8")
+    path.write_text(svg(width, height, title, body, bare=bare), encoding="utf-8")
     print(path, path.stat().st_size)
 
 
@@ -213,6 +225,212 @@ def openshift_arch() -> None:
     write("openshift-architecture.svg", 1200, 330, "OpenShift AI architecture", body)
 
 
+def tx(x, y, text, *, fill=TEXT, size=14, weight="400", anchor="start", family="RedHatText") -> str:
+    fam = f"{family}, Helvetica, Arial, sans-serif"
+    return (
+        f'<text x="{x}" y="{y}" text-anchor="{anchor}" fill="{fill}" font-size="{size}" '
+        f'font-weight="{weight}" font-family="{fam}">{escape(text)}</text>'
+    )
+
+
+def chip(x: int, y: int, w: int, h: int, text: str) -> str:
+    return (
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="{INSET}" stroke="{LINE}"/>'
+        + tx(x + 14, y + h // 2 + 5, text, size=13, fill=MUTED)
+    )
+
+
+def numbered(n: int, x: int, y: int, fill: str) -> str:
+    return (
+        f'<circle cx="{x}" cy="{y}" r="12" fill="{fill}"/>'
+        + tx(x, y + 5, str(n), size=13, weight="700", anchor="middle", fill="#ffffff")
+    )
+
+
+def tint(x: int, y: int, w: int, h: int, bg: str, stroke: str) -> str:
+    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{bg}" stroke="{stroke}"/>'
+
+
+def pill(x: int, y: int, w: int, h: int, text: str) -> str:
+    return (
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{h // 2}" fill="{CARD}" stroke="{LINE}"/>'
+        + tx(x + w // 2, y + h // 2 + 5, text, size=13, anchor="middle", fill=MUTED)
+    )
+
+
+def sandbox_ask_path(name: str, copy: dict) -> None:
+    # Layout matches the request-path figure: workspace, SSH tunnel, guest VM,
+    # sandbox → supervisor → TCP proxy → CPU Ollama. Official marks only.
+    w, h = 1440, 860
+    body = [
+        tx(32, 36, copy["title"], size=24, weight="600", family="RedHatDisplay"),
+        tx(32, 60, copy["subtitle"], size=14, fill=MUTED),
+        f'<rect x="32" y="70" width="220" height="3" fill="{BAR}"/>',
+        image("redhat-logo-on-dark.svg", w - 200, 18, 168, 28),
+        # Workspace
+        f'<rect x="32" y="100" width="268" height="470" rx="10" fill="{CARD}" stroke="{LINE}"/>',
+        f'<rect x="32" y="100" width="268" height="52" rx="10" fill="#0066cc"/>',
+        f'<rect x="32" y="136" width="268" height="16" fill="#0066cc"/>',
+        image("openshift-dev-spaces.svg", 44, 108, 36, 36),
+        tx(88, 132, copy["ws_title"], size=16, weight="700"),
+        tx(48, 172, copy["ws_lead"], size=13, fill=MUTED),
+        chip(48, 188, 236, 40, copy["ws_cli"]),
+        chip(48, 238, 236, 40, copy["ws_task"]),
+        chip(48, 288, 236, 40, copy["ws_steps"]),
+        chip(48, 338, 236, 40, copy["ws_tunnel"]),
+        tx(48, 408, copy["ws_note1"], size=13, fill=MUTED),
+        tx(48, 428, copy["ws_note2"], size=13, fill=MUTED),
+        f'<line x1="300" y1="358" x2="352" y2="358" stroke="{ACCENT}" stroke-width="2" '
+        f'stroke-dasharray="5 4" marker-end="url(#arrow)"/>',
+        # Developer Sandbox project
+        f'<rect x="352" y="96" width="1056" height="488" rx="14" fill="none" stroke="{ACCENT}" '
+        f'stroke-dasharray="7 6"/>',
+        f'<rect x="560" y="82" width="{copy["project_w"]}" height="28" rx="14" fill="{ACCENT}"/>',
+        tx(560 + copy["project_w"] // 2, 101, copy["project"], size=12, weight="700", anchor="middle"),
+        # VM
+        f'<rect x="372" y="128" width="700" height="432" rx="10" fill="{CARD}" stroke="{LINE}"/>',
+        f'<rect x="372" y="128" width="4" height="432" rx="2" fill="{BAR}"/>',
+        image("openshift-virtualization.svg", 392, 144, 36, 36),
+        image("fedora.svg", 436, 148, 28, 28),
+        f'<rect x="470" y="146" width="32" height="32" rx="6" fill="#ffffff"/>',
+        image("rhel.svg", 472, 148, 28, 28),
+        tx(512, 158, copy["vm_title"], size=16, weight="700"),
+        tx(512, 178, copy["vm_sub"], size=13, fill=MUTED),
+        f'<rect x="392" y="196" width="660" height="40" rx="8" fill="{INSET}" stroke="{LINE}"/>',
+        image("openshift.svg", 404, 202, 28, 28),
+        tx(440, 222, copy["gw"], size=13),
+        tx(1028, 222, copy["gw_names"], size=13, anchor="end", fill=MUTED),
+        # 1 sandbox
+        tint(392, 252, 340, 168, SUCCESS_BG, SUCCESS),
+        numbered(1, 412, 276, SUCCESS),
+        tx(436, 280, copy["sb_title"], size=15, weight="700"),
+        tx(412, 312, copy["sb_1"], size=13, fill=MUTED),
+        tx(412, 332, copy["sb_2"], size=13, fill=MUTED),
+        tx(412, 352, copy["sb_3"], size=13, fill=MUTED),
+        tx(412, 372, copy["sb_4"], size=13, fill=MUTED),
+        tx(412, 392, copy["sb_5"], size=13, fill=MUTED),
+        # 2 supervisor
+        tint(756, 252, 296, 168, GOLD_BG, GOLD),
+        numbered(2, 776, 276, GOLD),
+        image("openshift.svg", 792, 258, 28, 28),
+        tx(828, 280, copy["sv_title"], size=15, weight="700"),
+        tx(776, 318, copy["sv_1"], size=13, fill=MUTED),
+        tx(776, 338, copy["sv_2"], size=13, fill=MUTED),
+        tx(776, 358, copy["sv_3"], size=13, fill=MUTED),
+        f'<line x1="732" y1="336" x2="756" y2="336" stroke="{ACCENT}" stroke-width="2" marker-end="url(#arrow)"/>',
+        f'<line x1="904" y1="420" x2="904" y2="444" stroke="{ACCENT}" stroke-width="2" marker-end="url(#arrow)"/>',
+        # 3 proxy
+        tint(392, 440, 660, 100, PURPLE_BG, PURPLE),
+        numbered(3, 412, 472, PURPLE),
+        tx(436, 468, copy["px_title"], size=15, weight="700"),
+        tx(436, 494, copy["px_sub"], size=13, fill=MUTED),
+        # 4 Ollama
+        f'<rect x="1100" y="236" width="284" height="220" rx="10" fill="{CARD}" stroke="{GREEN}"/>',
+        numbered(4, 1120, 264, GREEN),
+        image("ollama.svg", 1136, 246, 36, 36),
+        tx(1180, 268, copy["ol_title"], size=15, weight="700"),
+        tx(1120, 304, copy["ol_1"], size=13, fill=MUTED),
+        tx(1120, 324, copy["ol_2"], size=13, fill=MUTED),
+        tx(1120, 344, copy["ol_3"], size=13, fill=MUTED),
+        tx(1120, 380, copy["ol_5"], size=13, fill=GREEN, weight="700"),
+        f'<path d="M1052 490 C1080 490, 1080 346, 1100 346" fill="none" stroke="{GREEN}" '
+        f'stroke-width="2" marker-end="url(#arrow-green)"/>',
+        # Footer pills
+        pill(32, 612, 280, 40, copy["pill1"]),
+        pill(328, 612, 300, 40, copy["pill2"]),
+        pill(644, 612, 340, 40, copy["pill3"]),
+        image("nvidia-logo.svg", 32, 678, 120, 22),
+        image("podman-logo.png", 168, 672, 36, 36),
+        image("python-logo.svg", 216, 676, 90, 28),
+        tx(320, 698, copy["legal1"], size=12, fill=MUTED),
+        tx(320, 716, copy["legal2"], size=12, fill=MUTED),
+    ]
+    write(name, w, h, copy["title"], "\n".join(body), bare=True)
+
+
+PATH_EN = {
+    "title": "How a question travels from the agent to Ollama",
+    "subtitle": "hello-openshell · OpenShell 0.1.8 on Red Hat Developer Sandbox",
+    "ws_title": "Dev Spaces workspace",
+    "ws_lead": "Your workspace terminal:",
+    "ws_cli": "OpenShell CLI 0.1.8",
+    "ws_task": "Terminal → Run Task…",
+    "ws_steps": "A1…A10  ·  B1…B10",
+    "ws_tunnel": "SSH tunnel  ·  127.0.0.1:8080",
+    "ws_note1": "Resolves in-project DNS names.",
+    "ws_note2": "A laptop cannot.",
+    "project": "DEVELOPER SANDBOX PROJECT (OPENSHIFT)",
+    "project_w": 360,
+    "vm_title": "VM u1.large · OpenShift Virtualization",
+    "vm_sub": "Fedora + minikube or RHEL + MicroShift",
+    "gw": "OpenShell gateway 0.1.8",
+    "gw_names": "minikube · microshift",
+    "sb_title": "Agent sandbox",
+    "sb_1": "Runs examples/ask.py",
+    "sb_2": "No network of its own",
+    "sb_3": "Policy: UID 65532, filesystem",
+    "sb_4": "Profile: only",
+    "sb_5": "host.openshell.internal:11434",
+    "sv_title": "Supervisor",
+    "sv_1": "Makes the only outbound",
+    "sv_2": "connection the profile",
+    "sv_3": "allows",
+    "px_title": "TCP proxy on the VM",
+    "px_sub": ":11434 → Ollama ClusterIP in this project",
+    "ol_title": "Ollama (CPU)",
+    "ol_1": "Model llama3.2:1b",
+    "ol_2": "Memory 4Gi, already loaded",
+    "ol_3": "GPU quota: 0",
+    "ol_5": "5 · replies to the sandbox",
+    "pill1": "One u1.large VM at a time",
+    "pill2": "VMs stop after one hour",
+    "pill3": "The sandbox has no network of its own",
+    "legal1": "Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat,",
+    "legal2": "or the Python Software Foundation. Marks belong to their owners.",
+}
+
+PATH_ES = {
+    "title": "Así viaja una pregunta desde el agente hasta Ollama",
+    "subtitle": "hello-openshell · OpenShell 0.1.8 en Red Hat Developer Sandbox",
+    "ws_title": "Dev Spaces workspace",
+    "ws_lead": "Tu terminal de trabajo:",
+    "ws_cli": "OpenShell CLI 0.1.8",
+    "ws_task": "Terminal → Run Task…",
+    "ws_steps": "A1…A10  ·  B1…B10",
+    "ws_tunnel": "túnel SSH  ·  127.0.0.1:8080",
+    "ws_note1": "Resuelve los nombres internos",
+    "ws_note2": "del proyecto; tu laptop no.",
+    "project": "PROYECTO DE DEVELOPER SANDBOX (OPENSHIFT)",
+    "project_w": 400,
+    "vm_title": "VM u1.large · OpenShift Virtualization",
+    "vm_sub": "Fedora + minikube o RHEL + MicroShift",
+    "gw": "Gateway OpenShell 0.1.8",
+    "gw_names": "minikube · microshift",
+    "sb_title": "Sandbox del agente",
+    "sb_1": "Corre examples/ask.py",
+    "sb_2": "Sin red propia",
+    "sb_3": "Política: UID 65532, filesystem",
+    "sb_4": "Perfil: solo",
+    "sb_5": "host.openshell.internal:11434",
+    "sv_title": "Supervisor",
+    "sv_1": "Hace la única conexión",
+    "sv_2": "de salida permitida",
+    "sv_3": "por el perfil",
+    "px_title": "Proxy TCP en la VM",
+    "px_sub": ":11434 → ClusterIP de Ollama en este proyecto",
+    "ol_title": "Ollama (CPU)",
+    "ol_1": "Modelo llama3.2:1b",
+    "ol_2": "Memoria 4Gi, ya cargado",
+    "ol_3": "Cuota de GPU: 0",
+    "ol_5": "5 · responde a la sandbox",
+    "pill1": "Una VM u1.large a la vez",
+    "pill2": "Las VMs se apagan a la hora",
+    "pill3": "La sandbox no tiene red propia",
+    "legal1": "Guía independiente, no afiliada ni respaldada por NVIDIA, Red Hat",
+    "legal2": "ni la Python Software Foundation. Las marcas pertenecen a sus titulares.",
+}
+
+
 def cloudshell_arch() -> None:
     body = "\n".join(
         [
@@ -231,6 +449,8 @@ def cloudshell_arch() -> None:
 def main() -> None:
     sandbox()
     sandbox_flow()
+    sandbox_ask_path("sandbox-ask-path.svg", PATH_EN)
+    sandbox_ask_path("sandbox-ask-path-es.svg", PATH_ES)
     local_arch()
     local_windows()
     local_flow()

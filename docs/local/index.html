@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="../css/site.css">
 </head>
 <body>
+  <a class="skip" href="#content">Skip to content</a>
   <header class="top">
     <div class="wrap bar">
       <a class="brand" href="../index.html">
@@ -53,7 +54,7 @@
       </nav>
     </div>
   </header>
-  <main class="wrap">
+  <main id="content" class="wrap">
     <section class="hero">
       <p class="kicker">Works on Linux, macOS, and Windows</p>
       <h1>OpenShell on your machine</h1>
@@ -90,21 +91,21 @@
     </section>
 
     <article class="step" id="quickstart">
-      <h2><span aria-hidden="true">1</span>Quickstart</h2>
+      <h2><span aria-hidden="true">1</span> Quickstart</h2>
       <p><strong>What it does:</strong> clones the repo, starts Ollama, installs the gateway, runs one ask, then cleans up.</p>
-      <pre><code>git clone https://github.com/maximilianoPizarro/hello-openshell
+      <pre data-where="command"><code>git clone https://github.com/maximilianoPizarro/hello-openshell
 cd hello-openshell
 make up
 make gateway
 make ask
 make down</code></pre>
       <p><code>make up</code> starts Ollama and pulls the model. <code>make gateway</code> installs OpenShell 0.1.8. <code>make ask</code> runs <code>examples/ask.py</code> in the hardened Python sandbox. You should see one Spanish sentence about what a sandbox is.</p>
-      <p><strong>Expected result:</strong> Status Connected and Version 0.1.8 after <code>make gateway</code>; a short Spanish reply after <code>make ask</code>.</p>
-      <p><strong>If it fails:</strong> see <a href="#failures">When something fails</a>.</p>
+      <p class="expect"><strong>You should see.</strong> Status Connected and Version 0.1.8 after <code>make gateway</code>; a short Spanish reply after <code>make ask</code>.</p>
+      <p class="related">If it fails: <a href="#fail-platform">Platform</a> · <a href="#fail-model">Model</a> · <a href="#fail-gateway">Gateway</a>.</p>
     </article>
 
     <article class="step" id="platforms">
-      <h2><span aria-hidden="true">2</span>Platforms</h2>
+      <h2><span aria-hidden="true">2</span> Platforms</h2>
       <p><strong>What it does:</strong> shows how the host, the Podman machine, and the sandbox reach Ollama.</p>
       <table>
         <thead>
@@ -121,36 +122,36 @@ make down</code></pre>
         <img src="../assets/diagrams/local-windows-net.svg" alt="Host, Podman machine, and sandbox reach Ollama on different addresses">
         <figcaption>Inside the Podman machine, <code>127.0.0.1:11434</code> answers. The sandbox name is <code>host.openshell.internal</code>.</figcaption>
       </figure>
-      <p><strong>If it fails:</strong> Platform or Network rows in <a href="#failures">When something fails</a>.</p>
+      <p class="related">If it fails: <a href="#fail-platform">Platform</a> · <a href="#fail-network">Network</a>.</p>
     </article>
 
     <article class="step" id="profile">
-      <h2><span aria-hidden="true">3</span>Import the Ollama profile</h2>
+      <h2><span aria-hidden="true">3</span> Import the Ollama profile</h2>
       <p><strong>What it does:</strong> registers which hosts and ports the sandbox may use, then creates the Ollama provider.</p>
-      <pre><code>openshell profile lint -f deploy/ollama.profile.yaml
+      <pre data-where="command"><code>openshell profile lint -f deploy/ollama.profile.yaml
 openshell profile import -f deploy/ollama.profile.yaml
 openshell provider create --name ollama --type ollama
 openshell provider get ollama</code></pre>
-      <p><strong>Expected result:</strong> Profile <code>ollama</code> imported and provider <code>ollama</code> listed.</p>
-      <p><strong>If it fails:</strong> Policy rows in <a href="#failures">When something fails</a>.</p>
+      <p class="expect"><strong>You should see.</strong> Profile <code>ollama</code> imported and provider <code>ollama</code> listed.</p>
+      <p class="related">If it fails: <a href="#fail-policy-binary">Policy</a>.</p>
     </article>
 
     <article class="step" id="check">
-      <h2><span aria-hidden="true">4</span>List models from a sandbox</h2>
+      <h2><span aria-hidden="true">4</span> List models from a sandbox</h2>
       <p><strong>What it does:</strong> creates a short-lived sandbox and lists models through the allowed host.</p>
-      <pre><code>openshell sandbox create \
+      <pre data-where="command"><code>openshell sandbox create \
   --name model-check \
   --from registry.access.redhat.com/hi/python:3.12 \
   --provider ollama \
   --policy deploy/hi-python.policy.yaml \
   -- /usr/bin/python3.12 -c 'import urllib.request; print(urllib.request.urlopen(urllib.request.Request("http://host.openshell.internal:11434/v1/models", headers={"Authorization":"Bearer fake"})).read().decode())'</code></pre>
       <p>The image user is UID 65532 and its primary group is 0, so the policy sets both user and group to 65532.</p>
-      <p><strong>Expected result:</strong> JSON that includes <code>llama3.2:1b</code>.</p>
-      <p><strong>If it fails:</strong> Model, Image, or Policy rows in <a href="#failures">When something fails</a>.</p>
+      <p class="expect"><strong>You should see.</strong> JSON that includes <code>llama3.2:1b</code>.</p>
+      <p class="related">If it fails: <a href="#fail-model">Model</a> · <a href="#fail-image">Image</a> · <a href="#fail-policy-loopback">loopback</a>.</p>
     </article>
 
     <article class="step" id="agent">
-      <h2><span aria-hidden="true">5</span>Ask with ask.py</h2>
+      <h2><span aria-hidden="true">5</span> Ask with ask.py</h2>
       <p><strong>What it does:</strong> runs <code>examples/ask.py</code> in a sandbox so the policy can allow the POST and the supervisor can reach Ollama.</p>
       <figure>
         <img src="../assets/diagrams/local-flow.svg" alt="ask.py POST, policy ALLOW, supervisor connection, model reply">
@@ -159,7 +160,7 @@ openshell provider get ollama</code></pre>
       <section class="note warn">
         <p><strong>Important.</strong> <code>fake</code> is a placeholder: the client requires a key, but Ollama does not validate it. The value is visible to the process. For a real credential, create a provider and attach it with <code>--provider</code> instead of <code>--env</code>.</p>
       </section>
-      <pre><code>export MODEL_NAME=llama3.2:1b
+      <pre data-where="command"><code>export MODEL_NAME=llama3.2:1b
 openshell sandbox create \
   --name hello-agent \
   --from registry.access.redhat.com/hi/python:3.12 \
@@ -169,16 +170,16 @@ openshell sandbox create \
   --env "MODEL_NAME=${MODEL_NAME}" \
   --env OPENAI_API_KEY=fake \
   -- /usr/bin/python3.12 -c "$(cat examples/ask.py)"</code></pre>
-      <p><strong>Expected result:</strong> one Spanish sentence that explains what a sandbox is and why an agent should run inside one.</p>
-      <p><strong>If it fails:</strong> Gateway, Image, or Policy rows in <a href="#failures">When something fails</a>.</p>
+      <p class="expect"><strong>You should see.</strong> One Spanish sentence that explains what a sandbox is and why an agent should run inside one.</p>
+      <p class="related">If it fails: <a href="#fail-gateway">Gateway</a> · <a href="#fail-image">Image</a> · <a href="#fail-policy-binary">Policy</a>.</p>
     </article>
 
     <article class="step" id="down">
-      <h2><span aria-hidden="true">6</span>Clean up</h2>
+      <h2><span aria-hidden="true">6</span> Clean up</h2>
       <p><strong>What it does:</strong> stops the lab and removes the downloaded models when you use <code>-v</code>.</p>
-      <pre><code>make down</code></pre>
+      <pre data-where="command"><code>make down</code></pre>
       <p>Or delete the sandboxes, then run <code>podman compose -f deploy/compose.yaml down -v</code>. That also deletes the volume <code>deploy_ollama</code>, including the downloaded models.</p>
-      <p><strong>Expected result:</strong> no running Ollama container and no active sandboxes for this lab.</p>
+      <p class="expect"><strong>You should see.</strong> No running Ollama container and no active sandboxes for this lab.</p>
     </article>
 
     <article class="step" id="failures">
@@ -219,9 +220,12 @@ openshell sandbox create \
   </main>
   <footer>
     <div class="wrap">
+      <p class="about"><a href="https://github.com/maximilianoPizarro/hello-openshell">github.com/maximilianoPizarro/hello-openshell</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/issues">Issues</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/LICENSE">Apache-2.0</a></p>
+      <p>Podman path for OpenShell 0.1.8. Last checked against this tree on 12 November 2026. After a CLI bump, re-run <code>make ask</code> and update this date.</p>
       <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
       <p class="legal">NVIDIA and OpenShell are trademarks of NVIDIA Corporation. Podman is a trademark of Red Hat, Inc. The Podman logo is the project file from the Podman repository. Python and the Python logo are trademarks of the Python Software Foundation. Red Hat and OpenShift are trademarks of Red Hat, Inc.</p>
     </div>
   </footer>
+  <script src="../js/site.js"></script>
 </body>
 </html>

@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="../css/site.css">
 </head>
 <body>
+  <a class="skip" href="#content">Skip to content</a>
   <header class="top">
     <div class="wrap bar">
       <a class="brand" href="../index.html">
@@ -53,7 +54,7 @@
       </nav>
     </div>
   </header>
-  <main class="wrap">
+  <main id="content" class="wrap">
     <section class="hero">
       <p class="kicker">minikube · Cloud Shell</p>
       <h1>OpenShell from Cloud Shell</h1>
@@ -74,21 +75,22 @@
         <tr><td>Sandbox image</td><td><code>registry.access.redhat.com/hi/python:3.12</code></td></tr>
       </tbody>
     </table>
-    <article class="step">
-      <h2><span>1</span>Start minikube</h2>
+    <article class="step" id="start">
+      <h2><span>1</span> Start minikube</h2>
       <p>You administer this cluster, so you can install the Agent Sandbox CRD. Do not pass <code>deploy/openshift-scc-values.yaml</code>. That file is for OpenShift <code>restricted-v2</code>.</p>
       <p>The Docker runtime on this host was <code>docker://29.2.1</code>. It does not advertise <code>supplementalGroupsPolicy</code>, and the sandbox pod's <code>Strict</code> value ends in <code>SupplementalGroupsPolicyNotSupported</code>. Cloud Shell sets <code>MINIKUBE_FORCE_SYSTEMD=true</code>. With containerd 2.2.1 that makes runc demand <code>slice:prefix:name</code> while the kubelet sends <code>/k8s.io/...</code>, so the control plane never listens. The kubelet still reports <code>NodeHasNoDiskPressure</code>.</p>
-      <pre><code>MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false</code></pre>
+      <pre data-where="command"><code>MINIKUBE_FORCE_SYSTEMD=false minikube start --driver=docker --container-runtime=containerd --force-systemd=false</code></pre>
       <p>If <code>kubeadm</code> is still waiting after four minutes and the kubelet log names <code>slice:prefix:name</code>, switch containerd to cgroupfs. The next init attempt can finish. Continue only when the node prints <code>containerd://2</code> and <code>strict=true</code>.</p>
-      <pre><code>docker exec minikube sed -i 's/SystemdCgroup = true/SystemdCgroup = false/' /etc/containerd/config.toml
+      <pre data-where="command"><code>docker exec minikube sed -i 's/SystemdCgroup = true/SystemdCgroup = false/' /etc/containerd/config.toml
 docker exec minikube systemctl restart containerd
 docker exec minikube systemctl restart kubelet
 kubectl get node minikube -o jsonpath='runtime={.status.nodeInfo.containerRuntimeVersion}{"\n"}strict={.status.features.supplementalGroupsPolicy}{"\n"}'</code></pre>
+      <p class="expect"><strong>You should see.</strong> The node prints <code>containerd://2</code> and <code>strict=true</code>.</p>
     </article>
-    <article class="step">
-      <h2><span>2</span>Agent Sandbox and the gateway</h2>
+    <article class="step" id="gateway">
+      <h2><span>2</span> Agent Sandbox and the gateway</h2>
       <p>The chart does not install the CRD. If <code>helm</code> is missing, install Helm 3 first.</p>
-      <pre><code>kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
+      <pre data-where="command"><code>kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.10/sandbox.yaml
 kubectl -n agent-sandbox-system rollout status deployment/agent-sandbox-controller --timeout=180s
 helm upgrade --install openshell \
   oci://ghcr.io/nvidia/openshell/helm-chart \
@@ -96,17 +98,18 @@ helm upgrade --install openshell \
   --namespace openshell \
   --create-namespace
 kubectl -n openshell rollout status statefulset/openshell --timeout=300s</code></pre>
+      <p class="expect"><strong>You should see.</strong> The OpenShell statefulset is Ready in namespace <code>openshell</code>.</p>
     </article>
-    <article class="step">
-      <h2><span>3</span>CLI and mTLS</h2>
+    <article class="step" id="cli">
+      <h2><span>3</span> CLI and mTLS</h2>
       <p>Cloud Shell is Debian. Use the musl binary, not the Fedora installer. Leave the port-forward running in another terminal. The directory name must match the gateway name.</p>
-      <pre><code>mkdir -p "${HOME}/.local/bin"
+      <pre data-where="command"><code>mkdir -p "${HOME}/.local/bin"
 curl -fL https://github.com/NVIDIA/OpenShell/releases/download/v0.1.8/openshell-x86_64-unknown-linux-musl.tar.gz \
   | tar -xz -C "${HOME}/.local/bin"
 export PATH="${HOME}/.local/bin:${PATH}"
 openshell --version
 kubectl -n openshell port-forward svc/openshell 8080:8080</code></pre>
-      <pre><code>mkdir -p "${HOME}/.config/openshell/gateways/minikube/mtls"
+      <pre data-where="command"><code>mkdir -p "${HOME}/.config/openshell/gateways/minikube/mtls"
 kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.ca\.crt}' | base64 -d \
   &gt; "${HOME}/.config/openshell/gateways/minikube/mtls/ca.crt"
 kubectl -n openshell get secret openshell-client-tls -o jsonpath='{.data.tls\.crt}' | base64 -d \
@@ -119,29 +122,46 @@ openshell gateway add https://127.0.0.1:8080 --local --name minikube
 openshell gateway select minikube
 openshell status</code></pre>
       <p>The first <code>gateway remove</code> prints <code>No gateway metadata found for 'minikube'</code>. The <code>add</code> on the next line still registers this cluster's certificates. <code>openshell status</code> then shows <code>Connected</code> for 0.1.8.</p>
+      <p class="expect"><strong>You should see.</strong> <code>openshell status</code> prints Connected for 0.1.8. <code>No gateway metadata found</code> on the first remove is expected.</p>
     </article>
-    <article class="step">
-      <h2><span>4</span>Smoke test</h2>
+    <article class="step" id="smoke">
+      <h2><span>4</span> Smoke test</h2>
       <p>The image pull succeeds. The <code>agent</code> container then exits 1 in the same second. The supervisor process starts, and its readiness probe to port 5501 stays refused. <code>openshell-0</code> stays <code>Running</code>.</p>
-      <pre><code>openshell sandbox create \
+      <pre data-where="command"><code>openshell sandbox create \
   --name model-check \
   --from registry.access.redhat.com/hi/python:3.12 \
   --policy deploy/hi-python.policy.yaml \
   -- /usr/bin/python3.12 -c 'print("ok")'
 kubectl logs -n openshell default--model-check -c agent</code></pre>
       <p>That log is <code>Landlock ABI v3 or newer (Linux 6.2+) is required, but Landlock is not implemented (kernel lacks CONFIG_SECURITY_LANDLOCK)</code>. Minikube's docker driver uses the Cloud Shell kernel. A sandbox needs a kernel with Landlock ABI v3.</p>
+      <p class="expect"><strong>You should see.</strong> The image pulls. The agent container exits 1. The log names missing Landlock. That is the documented end of this path. Use Developer Sandbox or Local for a sandbox that completes.</p>
+      <p class="related">If this fails earlier: <a href="#t-landlock">Landlock</a>.</p>
     </article>
-    <article class="step">
-      <h2><span>5</span>Delete the cluster</h2>
-      <pre><code>minikube delete</code></pre>
+    <article class="step" id="delete">
+      <h2><span>5</span> Delete the cluster</h2>
+      <pre data-where="command"><code>minikube delete</code></pre>
       <p>The click-through file the button opens is <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/docs/cloudshell-tutorial.md">docs/cloudshell-tutorial.md</a>.</p>
+      <p class="expect"><strong>You should see.</strong> minikube is gone. This does not create a GKE cluster and does not keep a separate bill.</p>
+    </article>
+    <article class="step" id="troubleshooting">
+      <h2>Troubleshooting</h2>
+      <table>
+        <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr id="t-landlock"><td>Agent log: kernel lacks <code>CONFIG_SECURITY_LANDLOCK</code></td><td>Cloud Shell kernel has no Landlock</td><td>Expected here. Run the sandbox on <a href="../index.html">Developer Sandbox</a> or <a href="../local/index.html">Local</a></td></tr>
+          <tr id="t-cgroup"><td><code>kubeadm</code> waits; kubelet log names <code>slice:prefix:name</code></td><td>systemd cgroup vs kubelet path</td><td>Switch containerd to cgroupfs as in step 1</td></tr>
+        </tbody>
+      </table>
     </article>
   </main>
   <footer>
     <div class="wrap">
+      <p class="about"><a href="https://github.com/maximilianoPizarro/hello-openshell">github.com/maximilianoPizarro/hello-openshell</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/issues">Issues</a> · <a href="https://github.com/maximilianoPizarro/hello-openshell/blob/main/LICENSE">Apache-2.0</a></p>
+      <p>Last verified on Cloud Shell with minikube 1.38.1: gateway Connected, sandbox exits on Landlock. OpenShell 0.1.8. Update this date when you re-run the gateway install after a chart bump.</p>
       <p>Independent guide, not affiliated with or endorsed by NVIDIA, Red Hat, or the Python Software Foundation.</p>
       <p class="legal">NVIDIA and OpenShell are trademarks of NVIDIA Corporation. Podman and Python marks are named on the <a href="../index.html">local page</a>.</p>
     </div>
   </footer>
+  <script src="../js/site.js"></script>
 </body>
 </html>

@@ -213,20 +213,24 @@ The sandbox project cannot install the gateway. It cannot create CRDs, namespace
 | --- | --- |
 | 1. Install OpenShell CLI | `bash scripts/install-openshell-cli.sh` (also on workspace start) |
 | 2. Project status | `bash scripts/sandbox-status.sh` |
-| 3. Start minikube VM and Ollama | `bash scripts/sandbox-vm-up.sh` (starts CPU Ollama, then runs connect) |
-| 4. Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
-| 5. Create minikube sandbox | `bash scripts/sandbox-vm-sandbox.sh` |
-| 6. Ask from the sandbox | `bash scripts/sandbox-ask.sh curl` |
-| 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` |
-| 8. Clean | `bash scripts/sandbox-down.sh` |
-| 9. Inspect cluster | `bash scripts/sandbox-vm-inspect.sh` |
-| 10. OpenShell UI | `bash scripts/sandbox-openshell-ui.sh` |
-| Start RHEL VM and Ollama | `bash scripts/sandbox-rhel-up.sh` |
-| Connect MicroShift | `bash scripts/sandbox-rhel-connect.sh` |
+| A1. Clean | `bash scripts/sandbox-down.sh` |
+| A2. Start minikube VM and Ollama | `bash scripts/sandbox-vm-up.sh` |
+| A3. Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
+| A4. Create minikube sandbox | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-sandbox.sh` |
+| A5. Ask from the sandbox | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh curl` |
+| A6. Ask with ask.py | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh python` |
+| A7. OpenShell UI | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-openshell-ui.sh` |
+| A8. Inspect cluster | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-vm-inspect.sh` |
+| A9. Ask two turns | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-ask.sh turns` |
+| A10. Delete sandboxes | `SANDBOX_GATEWAY=minikube bash scripts/sandbox-delete.sh` |
+| B1. Clean | `bash scripts/sandbox-down.sh` |
+| B2. Start RHEL VM and Ollama | `bash scripts/sandbox-rhel-up.sh` |
+| B3. Connect MicroShift | `bash scripts/sandbox-rhel-connect.sh` |
+| B4–B10 | Same as A4–A10 with `SANDBOX_GATEWAY=microshift` |
 
-**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand. OpenShell 0.1.8 has no web console. Command **10. OpenShell UI** wraps `openshell term` with ttyd on port 7681. After you restart the workspace so the `openshell-ui` endpoint exists, Dev Spaces publishes a Route and the PORTS panel can open it in the browser. Run it after command 4 (or Connect MicroShift). Leave the task running.
+**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand. OpenShell 0.1.8 has no web console. Task **A7. OpenShell UI** wraps `openshell term` with ttyd on port 7681. After you restart the workspace so the `openshell-ui` endpoint exists, Dev Spaces publishes a Route and the PORTS panel can open it in the browser. Run it after A3 (or B3). Leave the task running.
 
-Command 3 starts CPU Ollama (`llama3.2:1b`) in this project, then applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). The model pull runs while the guest boots, so Ask does not wait on that image. OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource. Inline cloud-init names `user: fedora` and curls [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) at the workspace commit. Admission allows 2048 bytes after the sandbox webhook appends its key. An inline copy of that script was rejected at 1622 bytes. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run command 3 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **8. Clean** first. The first successful boot is the one that installs the gateway.
+**A2. Start minikube VM and Ollama** starts CPU Ollama (`llama3.2:1b`) in this project, then applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). The model pull runs while the guest boots, so Ask does not wait on that image. OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource. Inline cloud-init names `user: fedora` and curls [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) at the workspace commit. Admission allows 2048 bytes after the sandbox webhook appends its key. An inline copy of that script was rejected at 1622 bytes. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run A2 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **A1. Clean** first. The first successful boot is the one that installs the gateway.
 
 | Piece | Value |
 | --- | --- |
@@ -236,7 +240,7 @@ Command 3 starts CPU Ollama (`llama3.2:1b`) in this project, then applies [deplo
 | kubectl / Helm | 1.37.0 / 3.22.1 |
 | Gateway | Agent Sandbox v1.0.10, OpenShell chart 0.1.8 |
 
-Command 4 copies the client certificates, opens an SSH tunnel to `127.0.0.1:8080`, and runs `openshell gateway add https://127.0.0.1:8080 --local --name minikube`. It waits up to 40 minutes for `/var/lib/hello-openshell/ready`. If that file never appears, the guest log is `/var/log/cloud-init-output.log`. Command 5 selects that gateway and creates the sandbox inside the VM:
+**A3. Connect minikube gateway** copies the client certificates, opens an SSH tunnel to `127.0.0.1:8080`, and runs `openshell gateway add https://127.0.0.1:8080 --local --name minikube`. It waits up to 40 minutes for `/var/lib/hello-openshell/ready`. If that file never appears, the guest log is `/var/log/cloud-init-output.log`. **A4. Create minikube sandbox** selects that gateway and creates the sandbox inside the VM:
 
 ```bash
 openshell gateway select minikube
@@ -249,7 +253,7 @@ openshell sandbox create \
 
 OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
-Commands 6 and 7 are the same path as `make ask`. They need the minikube gateway (commands 3–4). **A2. Start minikube VM and Ollama** (and B2 on the RHEL path) applies [deploy/sandbox-ollama.yaml](deploy/sandbox-ollama.yaml) when the guest is created, so the `llama3.2:1b` pull is done before Ask. Each Ask task creates an OpenShell sandbox from `registry.access.redhat.com/hi/python:3.12` with [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) and [deploy/ollama.profile.yaml](deploy/ollama.profile.yaml), then runs [examples/ask.py](examples/ask.py) inside that sandbox. The sandbox has no network of its own. Connect sets OpenShell `server.hostGatewayIP` so pods can resolve `host.openshell.internal`. The supervisor dials `host.openshell.internal:11434` on the Fedora guest, which proxies to CPU Ollama in this project. GPU quota is 0; that pod is capped at 4Gi. Command 6 prints `/v1/models` and an English sentence (`hello-ask`). Command 7 uses the Spanish prompt (`hello-agent`). If `rhel-vm` is Running, stop it before command 3: quota cannot hold two `u1.large` VMs plus Ollama. Command 8 deletes `minikube-vm`, `rhel-vm`, Ollama, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+**A5** and **A6** are the same path as `make ask`. They need the minikube gateway (A2–A3). **A2. Start minikube VM and Ollama** (and B2 on the RHEL path) applies [deploy/sandbox-ollama.yaml](deploy/sandbox-ollama.yaml) when the guest is created, so the `llama3.2:1b` pull is done before Ask. Each Ask task creates an OpenShell sandbox from `registry.access.redhat.com/hi/python:3.12` with [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) and [deploy/ollama.profile.yaml](deploy/ollama.profile.yaml), then runs [examples/ask.py](examples/ask.py) inside that sandbox. **A9. Ask two turns** runs [examples/ask_turns.py](examples/ask_turns.py) in `hello-turns`. The sandbox has no network of its own. Connect sets OpenShell `server.hostGatewayIP` so pods can resolve `host.openshell.internal`. The supervisor dials `host.openshell.internal:11434` on the Fedora guest, which proxies to CPU Ollama in this project. GPU quota is 0; that pod is capped at 4Gi. A5 prints `/v1/models` and an English sentence (`hello-ask`). A6 uses the Spanish prompt (`hello-agent`). If `rhel-vm` is Running, run **B1. Clean** (or A1) before A2: quota cannot hold two `u1.large` VMs plus Ollama. **A1. Clean** / **B1. Clean** delete `minikube-vm`, `rhel-vm`, Ollama, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`. **A10. Delete sandboxes** removes `hello-ask`, `hello-agent`, `hello-turns`, and `model-check` without stopping the VM or Ollama.
 
 **Start RHEL terminal** applies [deploy/sandbox-rhel-vm.yaml](deploy/sandbox-rhel-vm.yaml). It is a second guest, `rhel-vm`, cloned from the `rhel9` DataSource with preference `rhel.9`. The user is `cloud-user`. The script writes a password to `~/.config/hello-openshell/rhel.password` and authorizes the same workspace key as the Fedora VM. From the workspace shell:
 
@@ -266,7 +270,7 @@ openshell gateway select microshift
 
 Both disks are 30Gi and both guests are 8Gi, so stop the Fedora VM before starting this one if the quota is already full. Developer Sandbox still powers it off after one hour. If the VM object already exists, the script leaves the disk and cloud-init alone. On 12 Nov 2026 this guest was RHEL 9.9, kernel `5.14.0-741.20.1.el9_9`, Landlock ABI 6. The node became Ready and the CLI connected to OpenShell 0.1.8. The matrix for Device Edge lists RHEL 9.8 with MicroShift 4.22; 9.9 is newer than that matrix and this run used the public `latest-4.22` repository, which served `4.22.0~rc.5`.
 
-Command 9 prints the same objects from the workspace shell. `oc` sees the VirtualMachine. `openshell` sees `model-check`. `kubectl` for minikube runs inside the guest, over SSH:
+**A8. Inspect cluster** prints the same objects from the workspace shell. `oc` sees the VirtualMachine. `openshell` sees `model-check`. `kubectl` for minikube runs inside the guest, over SSH:
 
 ```bash
 export PATH="${HOME}/.local/bin:${PATH}"
@@ -386,7 +390,7 @@ The admin path (OpenShift 4.19+, Agent Sandbox v1.0.10, Helm chart 0.1.8, vLLM c
 | Gateway | The gateway creates no containers | `socket_path` must be the daemon that lists `ollama`. |
 | Image | Sandbox exits naming Landlock or seccomp | The kernel refused the filter. OpenShell 0.1.8 needs that check. On the VM path the kernel is the Fedora guest, not the Dev Spaces node. |
 | VM | Guest log says `DRV_AS_ROOT` | minikube 1.39 refuses the Podman driver as root unless `--force` is set. Clean the VM so cloud-init runs the current guest script. |
-| VM | SSH to the guest says `Permission denied` | Cloud-init kept the key from the first boot. Run 8. Clean, then 3. Start minikube VM. |
+| VM | SSH to the guest says `Permission denied` | Cloud-init kept the key from the first boot. Run A1. Clean, then A2. Start minikube VM. |
 | Policy | `no matching policy` names a binary | On the hardened image the interpreter is `/usr/bin/python3.12`. Update the profile and keep `resource_version`. |
 | Policy | `configure an explicit workload group` | The image user `65532` has primary group `0`. Pass `--policy deploy/hi-python.policy.yaml`. |
 | Policy | `resolves to always-blocked address` | The sandbox URL used loopback. Use `host.openshell.internal`. |
