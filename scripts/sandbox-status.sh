@@ -10,7 +10,7 @@ echo "=== quota ==="
 oc get quota,limitrange
 echo
 echo "=== pods ==="
-oc get pods
+oc get pods,deploy,svc
 if oc api-resources --api-group=kubevirt.io -o name 2>/dev/null | grep -q '^virtualmachines$'; then
   echo
   echo "=== virtual machines ==="

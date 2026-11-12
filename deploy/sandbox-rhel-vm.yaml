@@ -1,6 +1,7 @@
-# RHEL 9 guest for a terminal. The gateway stays on the Fedora VM.
-# RHEL here is the catalog DataSource rhel9. dnf needs a subscription,
-# so this guest does not install minikube.
+# RHEL 9 guest for MicroShift. This track does not use minikube.
+# RHEL here is the catalog DataSource rhel9. dnf on that image has no
+# subscription, so the boot script uses the public MicroShift mirror
+# and AlmaLinux 9 for the base packages. The connect task adds the pull secret.
 #
 # scripts/sandbox-rhel-up.sh fills the cloud-init placeholder. Inline
 # cloud-init is capped at 2048 bytes after the sandbox webhook appends

@@ -57,3 +57,87 @@ sleep 2
 python3 -c 'import socket; socket.create_connection(("127.0.0.1", 8080), 2)'
 EOF
 }
+
+# Sandboxes have no network. The supervisor dials host.openshell.internal:11434
+# on the Fedora guest. That port is a TCP proxy to Ollama in this project, so
+# the 1b model does not compete with minikube for the guest's 8Gi.
+sandbox_vm_ensure_ollama_proxy() {
+  local upstream
+  upstream="$(oc get svc ollama -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)"
+  if [ -z "${upstream}" ]; then
+    echo "Service ollama has no ClusterIP. Start Ollama in this project first."
+    return 1
+  fi
+  echo "Fedora :11434 -> ${upstream}:11434 (Ollama in ${SANDBOX_VM_NS})"
+  sandbox_vm_ssh sudo -n bash -s <<EOF
+set -eu
+cat >/usr/local/bin/hello-openshell-ollama-proxy.py <<'PY'
+#!/usr/bin/python3
+import socket
+import sys
+import threading
+
+upstream = sys.argv[1]
+port = int(sys.argv[2]) if len(sys.argv) > 2 else 11434
+
+
+def pipe(src, dst):
+    try:
+        while True:
+            data = src.recv(65536)
+            if not data:
+                break
+            dst.sendall(data)
+    except OSError:
+        pass
+    finally:
+        try:
+            dst.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
+
+
+def handle(client):
+    try:
+        remote = socket.create_connection((upstream, port), 10)
+    except OSError:
+        client.close()
+        return
+    t = threading.Thread(target=pipe, args=(client, remote), daemon=True)
+    t.start()
+    pipe(remote, client)
+    t.join()
+    client.close()
+    try:
+        remote.close()
+    except OSError:
+        pass
+
+
+srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+srv.bind(("0.0.0.0", port))
+srv.listen(32)
+while True:
+    client, _ = srv.accept()
+    threading.Thread(target=handle, args=(client,), daemon=True).start()
+PY
+chmod 755 /usr/local/bin/hello-openshell-ollama-proxy.py
+cat >/etc/systemd/system/hello-openshell-ollama.service <<UNIT
+[Unit]
+Description=Proxy host.openshell.internal:11434 to OpenShift Ollama
+After=network-online.target
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/hello-openshell-ollama-proxy.py ${upstream} 11434
+Restart=always
+RestartSec=2
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable hello-openshell-ollama.service
+systemctl restart hello-openshell-ollama.service
+sleep 1
+python3 -c 'import socket; socket.create_connection(("127.0.0.1", 11434), 5)'
+EOF
+}

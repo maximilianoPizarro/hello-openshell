@@ -4,14 +4,18 @@ set -euo pipefail
 
 echo "project: $(oc project -q)"
 
-pidfile="${HOME}/.config/hello-openshell/tunnel.pid"
-if [ -f "${pidfile}" ]; then
-  pid="$(cat "${pidfile}")"
-  if [ -n "${pid}" ]; then
-    kill "${pid}" 2>/dev/null || true
+for pidfile in \
+  "${HOME}/.config/hello-openshell/tunnel.pid" \
+  "${HOME}/.config/hello-openshell/microshift-tunnel.pid"
+do
+  if [ -f "${pidfile}" ]; then
+    pid="$(cat "${pidfile}")"
+    if [ -n "${pid}" ]; then
+      kill "${pid}" 2>/dev/null || true
+    fi
+    rm -f "${pidfile}"
   fi
-  rm -f "${pidfile}"
-fi
+done
 
 oc delete vm,vmi,dv,pvc \
   -l app.kubernetes.io/part-of=hello-openshell \
@@ -24,4 +28,4 @@ oc delete dv,pvc minikube-vm-disk rhel-vm-disk hello-openshell-minikube-disk --i
 oc delete all,secret,configmap,route,job \
   -l app.kubernetes.io/part-of=hello-openshell \
   --ignore-not-found
-echo "Labeled hello-openshell objects are gone. The Dev Spaces workspace is still running."
+echo "Labeled hello-openshell objects are gone (VMs and Ollama). The Dev Spaces workspace is still running."

@@ -21,6 +21,16 @@ components:
       cpuLimit: "2"
       mountSources: true
       sourceMapping: /projects
+      endpoints:
+        - name: openshell-ui
+          targetPort: 7681
+          exposure: public
+          protocol: http
+          path: /
+          secure: false
+          attributes:
+            discoverable: true
+            urlRewriteSupported: false
 commands:
   - id: install-openshell-cli
     exec:
@@ -72,7 +82,7 @@ commands:
       component: tools
       commandLine: bash scripts/sandbox-ask.sh curl
       workingDir: ${PROJECT_SOURCE}
-      label: "6. Ask Granite"
+      label: "6. Ask from the sandbox"
       group:
         kind: run
         isDefault: false
@@ -112,6 +122,15 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: connect-microshift
+    exec:
+      component: tools
+      commandLine: bash scripts/sandbox-rhel-connect.sh
+      workingDir: ${PROJECT_SOURCE}
+      label: Connect MicroShift
+      group:
+        kind: run
+        isDefault: false
   - id: openshell-version
     exec:
       component: tools
@@ -121,12 +140,12 @@ commands:
       group:
         kind: run
         isDefault: false
-  - id: openshell-terminal
+  - id: openshell-ui
     exec:
       component: tools
-      commandLine: bash -lc 'bash scripts/install-openshell-cli.sh && openshell gateway select minikube && openshell term'
+      commandLine: bash scripts/sandbox-openshell-ui.sh
       workingDir: ${PROJECT_SOURCE}
-      label: OpenShell terminal
+      label: "10. OpenShell UI"
       group:
         kind: run
         isDefault: false

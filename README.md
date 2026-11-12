@@ -16,7 +16,7 @@
 | Track | Where it runs | What serves the model |
 | --- | --- | --- |
 | Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
-| Developer Sandbox | Dev Spaces, gateway on an OpenShift Virtualization VM | Shared Granite in `sandbox-shared-models` |
+| Developer Sandbox | Dev Spaces, gateway on an OpenShift Virtualization VM | OpenShell sandbox on that gateway; Ollama `llama3.2:1b` via `host.openshell.internal:11434` |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
 | Cloud Shell | minikube inside Cloud Shell | Gateway only. This kernel cannot run a sandbox. |
 
@@ -216,14 +216,15 @@ The sandbox project cannot install the gateway. It cannot create CRDs, namespace
 | 3. Start minikube VM | `bash scripts/sandbox-vm-up.sh` (also runs the connect script) |
 | 4. Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
 | 5. Create minikube sandbox | `bash scripts/sandbox-vm-sandbox.sh` |
-| 6. Ask Granite | `bash scripts/sandbox-ask.sh curl` |
+| 6. Ask from the sandbox | `bash scripts/sandbox-ask.sh curl` |
 | 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` |
 | 8. Clean | `bash scripts/sandbox-down.sh` |
 | 9. Inspect cluster | `bash scripts/sandbox-vm-inspect.sh` |
+| 10. OpenShell UI | `bash scripts/sandbox-openshell-ui.sh` |
 | Start RHEL terminal | `bash scripts/sandbox-rhel-up.sh` |
-| OpenShell terminal | `openshell gateway select minikube && openshell term` |
+| Connect MicroShift | `bash scripts/sandbox-rhel-connect.sh` |
 
-**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand. **OpenShell terminal** opens the live TUI dashboard (`openshell term`) for gateways, providers, and sandboxes. Run it in the workspace terminal after command 4. There is no web console in OpenShell 0.1.8.
+**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand. OpenShell 0.1.8 has no web console. Command **10. OpenShell UI** wraps `openshell term` with ttyd on port 7681. After you restart the workspace so the `openshell-ui` endpoint exists, Dev Spaces publishes a Route and the PORTS panel can open it in the browser. Run it after command 4 (or Connect MicroShift). Leave the task running.
 
 Command 3 applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource. Inline cloud-init names `user: fedora` and curls [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) at the workspace commit. Admission allows 2048 bytes after the sandbox webhook appends its key. An inline copy of that script was rejected at 1622 bytes. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run command 3 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **8. Clean** first. The first successful boot is the one that installs the gateway.
 
@@ -248,7 +249,7 @@ openshell sandbox create \
 
 OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
-Commands 6 and 7 do not use the VM. They start a short-lived pod in this project and call Granite, then Qwen, the same way LiteLLM does in rhdh-agent-sandbox: `sandbox-shared-models` on port 8443, TLS verify off. There is no LiteMaaS key. HTTP inside the cluster has no Authorization header; HTTPS uses `oc whoami -t` for the oauth-proxy. If CoreDNS has no predictor, the script stops. That does not affect commands 4 and 5. Command 8 deletes `minikube-vm`, `rhel-vm`, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+Commands 6 and 7 are the same path as `make ask`. They need the minikube gateway (commands 3–4). Each one creates an OpenShell sandbox from `registry.access.redhat.com/hi/python:3.12` with [deploy/hi-python.policy.yaml](deploy/hi-python.policy.yaml) and [deploy/ollama.profile.yaml](deploy/ollama.profile.yaml), then runs [examples/ask.py](examples/ask.py) inside that sandbox. The sandbox has no network of its own. The supervisor dials `host.openshell.internal:11434` on the Fedora guest, which proxies to CPU Ollama (`llama3.2:1b`) in this project ([deploy/sandbox-ollama.yaml](deploy/sandbox-ollama.yaml)). GPU quota is 0; that pod is capped at 4Gi. Command 6 prints `/v1/models` and an English sentence (`hello-ask`). Command 7 uses the Spanish prompt (`hello-agent`). If `rhel-vm` is Running, stop it before command 3: quota cannot hold two `u1.large` VMs plus Ollama. Command 8 deletes `minikube-vm`, `rhel-vm`, Ollama, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
 
 **Start RHEL terminal** applies [deploy/sandbox-rhel-vm.yaml](deploy/sandbox-rhel-vm.yaml). It is a second guest, `rhel-vm`, cloned from the `rhel9` DataSource with preference `rhel.9`. The user is `cloud-user`. The script writes a password to `~/.config/hello-openshell/rhel.password` and authorizes the same workspace key as the Fedora VM. From the workspace shell:
 
@@ -257,7 +258,13 @@ ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
   cloud-user@rhel-vm.$(oc project -q).svc.cluster.local
 ```
 
-A laptop cannot resolve that name. Forward the service, then use port 2222: `oc port-forward svc/rhel-vm 2222:22`. The OpenShift console login is `cloud-user` plus that password file. This guest does not install minikube: `dnf` on the catalog image needs a subscription. The gateway stays on `minikube-vm`. Both disks are 30Gi and both guests are 8Gi, so stop the Fedora VM before starting this one if the quota is already full. Developer Sandbox still powers it off after one hour. If the VM object already exists, the script leaves the disk and cloud-init alone.
+A laptop cannot resolve that name. Forward the service, then use port 2222: `oc port-forward svc/rhel-vm 2222:22`. The OpenShift console login is `cloud-user` plus that password file. This guest installs MicroShift instead of minikube. The catalog image is not subscribed, so [scripts/microshift-guest-boot.sh](scripts/microshift-guest-boot.sh) takes MicroShift 4.22 from `mirror.openshift.com` and the missing base packages from AlmaLinux 9. `containers-common` from AlmaLinux conflicts with `redhat-release` on one GPG key file, so the install uses `rpm --replacefiles`. Put a Red Hat pull secret at `~/.config/hello-openshell/openshift-pull-secret` before **Connect MicroShift**. MicroShift pulls `quay.io/openshift-release-dev`, and an empty secret is rejected. The disk has no LVM volume group, so MicroShift storage is `none` and the gateway PVC is a hostPath volume. A sandbox workspace claim is 2Gi and also has no provisioner. On this run `model-check` stayed Pending until a hostPath volume was bound to `workspace-default--model-check`. It then printed `ok` with phase `Completed`. The guest hostname is `rhel-vm`, which is also the Service name, so the boot script pins that name to the guest address in `/etc/hosts`. Otherwise the API server dials the Service when it looks up the node. **Connect MicroShift** copies the pull secret, runs the boot script over SSH, and registers the gateway as `microshift`:
+
+```bash
+openshell gateway select microshift
+```
+
+Both disks are 30Gi and both guests are 8Gi, so stop the Fedora VM before starting this one if the quota is already full. Developer Sandbox still powers it off after one hour. If the VM object already exists, the script leaves the disk and cloud-init alone. On 12 Nov 2026 this guest was RHEL 9.9, kernel `5.14.0-741.20.1.el9_9`, Landlock ABI 6. The node became Ready and the CLI connected to OpenShell 0.1.8. The matrix for Device Edge lists RHEL 9.8 with MicroShift 4.22; 9.9 is newer than that matrix and this run used the public `latest-4.22` repository, which served `4.22.0~rc.5`.
 
 Command 9 prints the same objects from the workspace shell. `oc` sees the VirtualMachine. `openshell` sees `model-check`. `kubectl` for minikube runs inside the guest, over SSH:
 

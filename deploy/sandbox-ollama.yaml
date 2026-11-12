@@ -1,0 +1,98 @@
+# CPU Ollama in the user project. Developer Sandbox GPU quota is 0, and
+# sandbox-shared-models has no InferenceServices on this cluster.
+# llama3.2:1b. Local compose uses 3Gi; this pod uses 4Gi because the
+# OpenShift cgroup already spends ~800Mi before the model loads. Restricted SCC:
+# random UID, HOME=/tmp, models on emptyDir.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: hello-openshell
+spec:
+  selector:
+    app.kubernetes.io/name: ollama
+  ports:
+    - name: http
+      port: 11434
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: hello-openshell
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama
+        app.kubernetes.io/part-of: hello-openshell
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: ollama
+          image: docker.io/ollama/ollama:latest
+          args:
+            - serve
+          env:
+            - name: HOME
+              value: /tmp
+            - name: OLLAMA_HOST
+              value: 0.0.0.0:11434
+            - name: OLLAMA_MODELS
+              value: /tmp/models
+            - name: OLLAMA_KEEP_ALIVE
+              value: "5m"
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "1"
+            - name: OLLAMA_NUM_PARALLEL
+              value: "1"
+            - name: OLLAMA_CONTEXT_LENGTH
+              value: "2048"
+          ports:
+            - name: http
+              containerPort: 11434
+          resources:
+            requests:
+              cpu: 100m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 4Gi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /tmp/models
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: models
+          emptyDir:
+            sizeLimit: 4Gi

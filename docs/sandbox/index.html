@@ -47,13 +47,13 @@
     <section class="hero">
       <p class="kicker">Experimental · OpenShift Virtualization</p>
       <h1>Developer Sandbox</h1>
-      <p class="badge">Last checked: 2026-11-11 with OpenShell 0.1.8</p>
+      <p class="badge">Last checked: 2026-11-12 with OpenShell 0.1.8</p>
       <p class="lede">Open the repo in a workspace. Startup installs the OpenShell 0.1.8 CLI. The sandbox project cannot host the gateway, so OpenShift Virtualization runs a Fedora VM in that project and the VM runs minikube. From the workspace terminal, the CLI creates the sandbox on that gateway.</p>
       <p><a href="https://workspaces.openshift.com/#https://github.com/maximilianoPizarro/hello-openshell?storageType=ephemeral">Open in Developer Sandbox</a></p>
     </section>
     <figure>
       <img src="../assets/diagrams/sandbox-architecture.jpg" alt="Dev Spaces workspace, oc whoami token, shared model predictor">
-      <figcaption>The user project usually has no GPU quota. Ask tasks call the shared Granite predictor in <code>sandbox-shared-models</code>.</figcaption>
+      <figcaption>Ask tasks run <code>examples/ask.py</code> inside an OpenShell sandbox on the minikube gateway. The supervisor dials <code>host.openshell.internal:11434</code>, proxied to CPU Ollama in this project.</figcaption>
     </figure>
     <article class="step">
       <h2><span>1</span>Open the workspace</h2>
@@ -61,7 +61,7 @@
     </article>
     <article class="step">
       <h2><span>2</span>Devfile commands</h2>
-      <p>These are the <code>exec</code> commands, in the order you run them. <strong>3. Start minikube VM</strong> already runs <strong>4. Connect minikube gateway</strong> at the end. Run Connect on its own when the VM is already up. <strong>OpenShell version</strong> is optional: <code>openshell --version</code> (there is no <code>openshell version</code> subcommand). <strong>OpenShell terminal</strong> opens the live TUI after command 4: there is no web console in OpenShell 0.1.8.</p>
+      <p>These are the <code>exec</code> commands, in the order you run them. <strong>3. Start minikube VM</strong> already runs <strong>4. Connect minikube gateway</strong> at the end. Run Connect on its own when the VM is already up. <strong>OpenShell version</strong> is optional: <code>openshell --version</code> (there is no <code>openshell version</code> subcommand). <strong>10. OpenShell UI</strong> opens the live TUI in the Dev Spaces browser after command 4.</p>
       <pre><code>1. bash scripts/install-openshell-cli.sh
 2. bash scripts/sandbox-status.sh
 3. bash scripts/sandbox-vm-up.sh
@@ -71,7 +71,9 @@
 7. bash scripts/sandbox-ask.sh python
 8. bash scripts/sandbox-down.sh
 9. bash scripts/sandbox-vm-inspect.sh
-openshell gateway select minikube &amp;&amp; openshell term</code></pre>
+10. bash scripts/sandbox-openshell-ui.sh
+bash scripts/sandbox-rhel-up.sh
+bash scripts/sandbox-rhel-connect.sh</code></pre>
     </article>
     <article class="step">
       <h2><span>3</span>Start the VM</h2>
@@ -99,30 +101,28 @@ openshell sandbox create \
       <p>OpenShell 0.1.8 needs Landlock ABI v3 on the guest kernel. On 11 Nov 2026 this command printed <code>ok</code> and the phase was <code>Completed</code>. The gateway log then shows <code>policy status=loaded</code> and <code>FinalizeMainProcessExit</code>. The pod's containers are <code>agent</code> and two init containers. There is no <code>supervisor</code> container. If a later agent exits, <code>openshell logs model-check</code> and <code>kubectl logs -n openshell default--model-check -c agent</code> are the logs to read. Task <strong>9. Inspect cluster</strong> prints them.</p>
     </article>
     <article class="step">
-      <h2><span>5</span>Ask Granite</h2>
-      <p>Task <strong>6. Ask Granite</strong> does not use the VM. It runs a pod in this project and calls Granite, then Qwen, the same way LiteLLM does in rhdh-agent-sandbox: in-cluster DNS, port 8443, TLS verify off. No LiteMaaS key. HTTP has no header; HTTPS uses <code>oc whoami -t</code> for the oauth-proxy. If nothing answers, the predictors are not in CoreDNS; commands 4 and 5 are a separate path. Red Hat's walk-through is <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">Get started with consuming GPU-hosted large language models</a>.</p>
+      <h2><span>5</span>Ask from the sandbox</h2>
+      <p>Task <strong>6. Ask from the sandbox</strong> is the same path as <code>make ask</code> on your machine. It needs commands 3 and 4. It creates the sandbox <code>hello-ask</code> from <code>registry.access.redhat.com/hi/python:3.12</code>, imports <code>deploy/ollama.profile.yaml</code>, and runs <code>examples/ask.py</code> inside that sandbox. The sandbox has no network. The supervisor dials <code>host.openshell.internal:11434</code> on the Fedora guest, which proxies to CPU Ollama <code>llama3.2:1b</code> in this project (<code>deploy/sandbox-ollama.yaml</code>, 4Gi cap, GPU quota 0). Command 6 lists <code>/v1/models</code> and asks one English sentence. If <code>rhel-vm</code> is Running, stop it before command 3.</p>
     </article>
     <article class="step">
       <h2><span>6</span>Ask with ask.py</h2>
-      <p>Task <strong>7. Ask with ask.py</strong> uses the same in-cluster pod and the Spanish prompt from <code>examples/ask.py</code>. The Dev Spaces tools container cannot resolve <code>sandbox-shared-models</code>; the pod can, when the predictors exist.</p>
+      <p>Task <strong>7. Ask with ask.py</strong> creates <code>hello-agent</code> the same way, with the Spanish prompt from <code>examples/ask.py</code>. Both sandboxes use <code>deploy/hi-python.policy.yaml</code>. Command 5 stays the smoke test (<code>print("ok")</code> in <code>model-check</code>); 6 and 7 are the agent that talks to the model.</p>
     </article>
     <article class="step">
-      <h2><span>+</span>OpenShell terminal</h2>
-      <p>OpenShell 0.1.8 has no web console. The live dashboard is <code>openshell term</code>: three panels for gateways, providers, and sandboxes. Use <code>Tab</code> to move between panels and Enter for detail. Run task <strong>OpenShell terminal</strong> in the workspace terminal after command 4, or type:</p>
-      <pre><code>openshell gateway select minikube
-openshell term</code></pre>
-      <p>If the task panel is not a TTY, paste the same commands into the workspace shell. Official notes: <a href="https://docs.nvidia.com/openshell/dev/how-it-works/sandboxes/overview">Manage Sandboxes</a>.</p>
+      <h2><span>10</span>OpenShell UI</h2>
+      <p>OpenShell 0.1.8 has no web console. Task <strong>10. OpenShell UI</strong> runs the official TUI (<code>openshell term</code>) inside ttyd on port 7681. The tools container declares a public endpoint named <code>openshell-ui</code>, so Dev Spaces creates a Route and the PORTS panel can open it in the Simple Browser. Restart the workspace once after that endpoint is in <code>devfile.yaml</code>. Leave the task running. Tab and Enter still move between gateways, providers, and sandboxes. Official notes: <a href="https://docs.nvidia.com/openshell/dev/how-it-works/sandboxes/overview">Manage Sandboxes</a>.</p>
     </article>
     <article class="step">
       <h2><span>7</span>Clean</h2>
-      <p>Task <strong>8. Clean</strong> stops the SSH tunnel and deletes <code>minikube-vm</code>, <code>rhel-vm</code>, and objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. It does not delete shared models or the workspace.</p>
+      <p>Task <strong>8. Clean</strong> stops the SSH tunnel and deletes <code>minikube-vm</code>, <code>rhel-vm</code>, Ollama, and objects labeled <code>app.kubernetes.io/part-of=hello-openshell</code>. It does not delete shared models or the workspace.</p>
     </article>
     <article class="step">
       <h2><span>+</span>RHEL terminal</h2>
-      <p><strong>Start RHEL terminal</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code>. That guest is <code>rhel-vm</code>, cloned from the <code>rhel9</code> DataSource with preference <code>rhel.9</code>. The login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>, and the workspace key is the same one as the Fedora VM. This guest does not install minikube. <code>dnf</code> on the catalog image needs a subscription, so the gateway stays on <code>minikube-vm</code>.</p>
-      <pre><code>ssh -i ~/.config/hello-openshell/minikube_ed25519 -o IdentitiesOnly=yes \
-  cloud-user@rhel-vm.$(oc project -q).svc.cluster.local</code></pre>
-      <p>From a laptop, <code>oc port-forward svc/rhel-vm 2222:22</code> and SSH to <code>127.0.0.1</code> on port 2222. The console uses the same user and password file. Stop the Fedora VM first if the quota is full. Developer Sandbox still powers the guest off after one hour.</p>
+      <p><strong>Start RHEL terminal</strong> applies <code>deploy/sandbox-rhel-vm.yaml</code>. That guest is <code>rhel-vm</code>, cloned from the <code>rhel9</code> DataSource with preference <code>rhel.9</code>. The login is <code>cloud-user</code>. The password is in <code>~/.config/hello-openshell/rhel.password</code>, and the workspace key is the same one as the Fedora VM. This guest installs MicroShift instead of minikube. The catalog image has no subscription, so the boot script uses the public MicroShift 4.22 mirror and AlmaLinux 9 for the base packages.</p>
+      <p><strong>Connect MicroShift</strong> runs <code>scripts/sandbox-rhel-connect.sh</code>. Save a Red Hat pull secret as <code>~/.config/hello-openshell/openshift-pull-secret</code> first. The script copies that file, runs <code>scripts/microshift-guest-boot.sh</code> over SSH, and registers the gateway:</p>
+      <pre><code>openshell gateway add https://127.0.0.1:8080 --local --name microshift
+openshell gateway select microshift</code></pre>
+      <p>On 12 Nov 2026 the guest was RHEL 9.9 with Landlock ABI 6. The node became Ready, the CLI connected to OpenShell 0.1.8, and `model-check` printed `ok` after a 2Gi hostPath volume was bound to the workspace claim. There is no storage provisioner on this disk. The root disk has no LVM volume group, so the gateway volume is hostPath. The hostname <code>rhel-vm</code> is also the Service name; the boot script pins that name in <code>/etc/hosts</code> so the API server can reach the kubelet. From a laptop, <code>oc port-forward svc/rhel-vm 2222:22</code> and SSH to <code>127.0.0.1</code> on port 2222. Stop the Fedora VM first if the quota is full. Developer Sandbox still powers the guest off after one hour.</p>
     </article>
     <section class="note warn">
       <p><strong>Gateway.</strong> A Developer Sandbox project cannot create CRDs, namespaces, or ClusterRoles, and <code>agents.x-k8s.io</code> is not served, so Helm chart 0.1.8 cannot install in the project itself. The chart runs inside the OpenShift Virtualization VM's minikube, where those limits do not apply. Do not pass OpenShift SCC values into that minikube. A cluster you administer is the <a href="../openshift/index.html">OpenShift AI</a> module.</p>

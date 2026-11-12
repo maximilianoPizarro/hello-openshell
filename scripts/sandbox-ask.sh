@@ -1,15 +1,21 @@
 #!/bin/bash
-# Call Granite/Qwen the same way LiteLLM does in rhdh-agent-sandbox and n8n-sandbox:
-# from a pod in this project, to sandbox-shared-models, TLS verify off.
-# No LiteMaaS key. In-cluster HTTP has no key; HTTPS 8443 uses the OpenShift
-# token from `oc whoami -t` (oauth-proxy), same as those charts.
-# Usage: sandbox-ask.sh curl | sandbox-ask.sh python
+# Same path as make ask / scripts/ask-local.sh: the agent runs inside an
+# OpenShell sandbox on the minikube gateway. The sandbox has no network.
+# The supervisor dials host.openshell.internal:11434 on the Fedora guest
+# (a proxy to CPU Ollama in this project). Usage: curl | python
 set -euo pipefail
 
 MODE="${1:-curl}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-NS="$(oc project -q)"
-POD="hello-openshell-ask"
+# shellcheck source=sandbox-vm-lib.sh
+source "${ROOT}/scripts/sandbox-vm-lib.sh"
+
+MODEL="${SANDBOX_OLLAMA_MODEL:-llama3.2:1b}"
+POLICY="${POLICY:-deploy/hi-python.policy.yaml}"
+PROFILE="${PROFILE:-deploy/ollama.profile.yaml}"
+SANDBOX_IMAGE="${SANDBOX_IMAGE:-registry.access.redhat.com/hi/python:3.12}"
+export MSYS_NO_PATHCONV=1
+export PATH="${HOME}/.local/bin:${PATH}"
 
 if [[ "$MODE" != "curl" && "$MODE" != "python" ]]; then
   echo "Use: sandbox-ask.sh curl    or    sandbox-ask.sh python"
@@ -17,102 +23,65 @@ if [[ "$MODE" != "curl" && "$MODE" != "python" ]]; then
 fi
 
 if [[ "$MODE" == "python" ]]; then
+  NAME=hello-agent
+  LIST_MODELS=0
   PROMPT='Explica en una frase que es un sandbox y por que un agente deberia correr dentro de uno.'
 else
+  NAME=hello-ask
+  LIST_MODELS=1
   PROMPT='In one sentence, what is a sandbox?'
 fi
 
-TOKEN="$(oc whoami -t)"
-oc delete pod "${POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
-
-export MSYS_NO_PATHCONV=1
-echo "Asking from a pod in ${NS} (in-cluster DNS, no LiteMaaS key)."
-
-# oc run --env requires KEY=value. The remote script never prints the token.
-if ! oc run "${POD}" \
-  --image=curlimages/curl:8.11.1 \
-  --restart=Never \
-  --rm -i \
-  --quiet \
-  --env="ASK_TOKEN=${TOKEN}" \
-  --env="ASK_PROMPT=${PROMPT}" \
-  --command -- sh -s <<'REMOTE'
-set -eu
-bases="
-https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1
-http://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local/v1
-https://isvc-qwen3-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1
-http://isvc-qwen3-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local/v1
-"
-sa=""
-if [ -f /var/run/secrets/kubernetes.io/serviceaccount/token ]; then
-  sa="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
-fi
-
-try_models() {
-  base="$1"
-  auth="$2"
-  if [ -n "$auth" ]; then
-    curl -sk --connect-timeout 5 --max-time 20 -H "Authorization: Bearer ${auth}" "${base}/models"
-  else
-    curl -sk --connect-timeout 5 --max-time 20 "${base}/models"
-  fi
-}
-
-ok=""
-used=""
-auth_used=""
-for base in $bases; do
-  echo "GET ${base}/models"
-  body=""
-  for auth in "" "$sa" "$ASK_TOKEN"; do
-    if body="$(try_models "$base" "$auth" 2>/dev/null)" && echo "$body" | grep -q '"id"'; then
-      ok="$body"
-      used="$base"
-      auth_used="$auth"
-      break
-    fi
-  done
-  if [ -n "$ok" ]; then
-    echo "$ok"
-    break
-  fi
-  echo "No answer from ${base}."
-done
-
-if [ -z "$ok" ]; then
-  echo
-  echo "In-cluster DNS did not reach Granite or Qwen."
-  echo "That is the same path LiteLLM uses in rhdh-agent-sandbox / n8n-sandbox."
-  echo "oc get pods -n sandbox-shared-models is empty on this cluster right now."
+vm_status="$(oc get vm "${SANDBOX_VM_NAME}" -o jsonpath='{.status.printableStatus}' 2>/dev/null || true)"
+if [ "${vm_status}" != "Running" ]; then
+  echo "minikube-vm is ${vm_status:-missing}. Run 3. Start minikube VM first."
+  echo "The Ask tasks run examples/ask.py inside an OpenShell sandbox on that gateway."
+  echo "If rhel-vm is Running, stop it first: quota cannot hold two u1.large VMs plus Ollama."
   exit 1
 fi
 
-model="$(printf '%s' "$ok" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
-if [ -z "$model" ]; then
-  echo "The predictor returned no model id."
+if [ ! -f "${SANDBOX_VM_KEY}" ]; then
+  echo "No SSH key at ${SANDBOX_VM_KEY}. Run 3. Start minikube VM first."
   exit 1
 fi
-echo "model: ${model}"
-echo "base: ${used}"
 
-if [ -n "$auth_used" ]; then
-  curl -sk --connect-timeout 15 --max-time 120 \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer ${auth_used}" \
-    "${used}/chat/completions" \
-    -d "{\"model\":\"${model}\",\"messages\":[{\"role\":\"user\",\"content\":\"${ASK_PROMPT}\"}],\"max_tokens\":120,\"temperature\":0.2}"
-else
-  curl -sk --connect-timeout 15 --max-time 120 \
-    -H "Content-Type: application/json" \
-    "${used}/chat/completions" \
-    -d "{\"model\":\"${model}\",\"messages\":[{\"role\":\"user\",\"content\":\"${ASK_PROMPT}\"}],\"max_tokens\":120,\"temperature\":0.2}"
+echo "project: ${SANDBOX_VM_NS}"
+echo "Ask ${MODE} runs in sandbox ${NAME} on the minikube gateway (host.openshell.internal:11434)."
+
+bash "${ROOT}/scripts/sandbox-ollama-up.sh"
+bash "${ROOT}/scripts/install-openshell-cli.sh"
+bash "${ROOT}/scripts/sandbox-vm-connect.sh"
+sandbox_vm_ensure_ollama_proxy
+if ! sandbox_vm_ssh 'python3 -c "import socket; socket.create_connection((\"127.0.0.1\", 11434), 5)"'; then
+  echo "Fedora :11434 did not accept connections. The sandbox cannot reach Ollama."
+  sandbox_vm_ssh 'sudo -n systemctl status hello-openshell-ollama --no-pager' || true
+  exit 1
 fi
-echo
-REMOTE
-then
-  oc delete pod "${POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
-  exit 0
+
+cd "${ROOT}"
+openshell gateway select minikube
+
+if ! openshell profile get ollama >/dev/null 2>&1; then
+  openshell profile lint -f "${PROFILE}"
+  openshell profile import -f "${PROFILE}"
 fi
-oc delete pod "${POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
-exit 1
+if ! openshell provider get ollama >/dev/null 2>&1; then
+  openshell provider create --name ollama --type ollama
+fi
+
+ask_src="$(cat "${ROOT}/examples/ask.py")"
+openshell sandbox delete "${NAME}" >/dev/null 2>&1 || true
+echo "Creating sandbox ${NAME} from ${SANDBOX_IMAGE}."
+openshell sandbox create \
+  --name "${NAME}" \
+  --from "${SANDBOX_IMAGE}" \
+  --provider ollama \
+  --policy "${POLICY}" \
+  --env OPENAI_BASE_URL=http://host.openshell.internal:11434/v1 \
+  --env "MODEL_NAME=${MODEL}" \
+  --env OPENAI_API_KEY=fake \
+  --env "ASK_PROMPT=${PROMPT}" \
+  --env "ASK_LIST_MODELS=${LIST_MODELS}" \
+  --no-credential-warnings \
+  -- /usr/bin/python3.12 -c "${ask_src}"
+openshell sandbox list

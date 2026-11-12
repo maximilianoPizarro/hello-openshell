@@ -9,25 +9,27 @@ token = (
     or os.environ.get("OPENAI_API_KEY")
     or "fake"
 )
-
-payload = {
-    "model": model,
-    "messages": [
-        {
-            "role": "user",
-            "content": (
-                "Explica en una frase que es un sandbox "
-                "y por que un agente deberia correr dentro de uno."
-            ),
-        }
-    ],
-    "max_tokens": 120,
-    "temperature": 0.2,
-}
+prompt = os.environ.get(
+    "ASK_PROMPT",
+    "Explica en una frase que es un sandbox "
+    "y por que un agente deberia correr dentro de uno.",
+)
 
 headers = {
     "Content-Type": "application/json",
     "Authorization": "Bearer " + token,
+}
+
+if os.environ.get("ASK_LIST_MODELS") == "1":
+    models_req = urllib.request.Request(base + "/models", headers=headers)
+    with urllib.request.urlopen(models_req, timeout=60) as models_res:
+        print(models_res.read().decode())
+
+payload = {
+    "model": model,
+    "messages": [{"role": "user", "content": prompt}],
+    "max_tokens": 120,
+    "temperature": 0.2,
 }
 
 request = urllib.request.Request(

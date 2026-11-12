@@ -47,12 +47,23 @@ else
   else
     py=python
   fi
-  ROOT="${ROOT}" PUB="$(cat "${SANDBOX_VM_KEY}.pub")" PASS="$(cat "${pass_file}")" OUT="${rendered}" \
+  REV="$(git -C "${ROOT}" rev-parse HEAD)"
+  echo "guest boot script commit: ${REV}"
+  ROOT="${ROOT}" PUB="$(cat "${SANDBOX_VM_KEY}.pub")" PASS="$(cat "${pass_file}")" OUT="${rendered}" REV="${REV}" \
     "${py}" - <<'PY'
 import os
 from pathlib import Path
 
 root = Path(os.environ["ROOT"])
+url = (
+    "https://raw.githubusercontent.com/maximilianoPizarro/hello-openshell/"
+    + os.environ["REV"]
+    + "/scripts/microshift-guest-boot.sh"
+)
+command = (
+    "i=0; u=%s; while [ $i -lt 12 ]; do curl -fsSL -o /usr/local/sbin/microshift-guest-boot.sh $u && break; i=$((i+1)); sleep 5; done; test -s /usr/local/sbin/microshift-guest-boot.sh && bash /usr/local/sbin/microshift-guest-boot.sh || true"
+    % url
+)
 user_data = """#cloud-config
 user: cloud-user
 password: {password}
@@ -61,9 +72,12 @@ chpasswd:
 ssh_pwauth: true
 ssh_authorized_keys:
   - {pubkey}
+runcmd:
+  - '{command}'
 """.format(
     password=os.environ["PASS"].strip(),
     pubkey=os.environ["PUB"].strip(),
+    command=command,
 )
 size = len(user_data.encode("utf-8"))
 if size > 1400:
@@ -108,7 +122,9 @@ fi
 
 pass_file="${SANDBOX_VM_CFG}/rhel.password"
 echo
-echo "Guest: RHEL 9, user cloud-user. This VM does not run minikube."
+echo "Guest: RHEL 9, user cloud-user. Cloud-init installs MicroShift, not minikube."
+echo "Then run: bash scripts/sandbox-rhel-connect.sh"
+echo "That step needs ~/.config/hello-openshell/openshift-pull-secret."
 echo "Developer Sandbox stops Linux VMs after one hour. Run this task again if that happens."
 echo "Console password file: ${pass_file}"
 echo
