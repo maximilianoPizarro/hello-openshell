@@ -100,11 +100,11 @@ openshell sandbox create \
     </article>
     <article class="step">
       <h2><span>5</span>Ask Granite</h2>
-      <p>La tarea <strong>6. Ask Granite</strong> no usa la VM. Llama al predictor compartido <code>https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1</code> con el modelo <code>isvc-granite-31-8b-fp8</code>. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. No hace falta exportar una URL. Pisá con <code>SANDBOX_MODEL_BASE</code> solo si querés otro endpoint. Si <code>/v1/models</code> falla, el script igual manda el chat con ese model id. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
+      <p>La tarea <strong>6. Ask Granite</strong> no usa la VM. Levanta un pod en este proyecto y llama a Granite y después a Qwen, igual que LiteLLM en rhdh-agent-sandbox: DNS de clúster, puerto 8443, sin verificar TLS. No hay key de LiteMaaS. En HTTP no va header; en HTTPS usa <code>oc whoami -t</code> para el oauth-proxy. Si nada responde, los predictors no están en CoreDNS; los comandos 4 y 5 son otro camino. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
     </article>
     <article class="step">
       <h2><span>6</span>Ask with ask.py</h2>
-      <p>La tarea <strong>7. Ask with ask.py</strong> usa la misma URL de Granite por defecto y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. El prompt del script es una frase en español.</p>
+      <p>La tarea <strong>7. Ask with ask.py</strong> usa el mismo pod en el clúster y el prompt en español de <code>examples/ask.py</code>. El contenedor de Dev Spaces no resuelve <code>sandbox-shared-models</code>; el pod sí, cuando los predictors existen.</p>
     </article>
     <article class="step">
       <h2><span>+</span>OpenShell terminal</h2>

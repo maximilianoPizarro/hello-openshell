@@ -100,11 +100,11 @@ openshell sandbox create \
     </article>
     <article class="step">
       <h2><span>5</span>Ask Granite</h2>
-      <p>Task <strong>6. Ask Granite</strong> does not use the VM. It calls the shared predictor <code>https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1</code> with model <code>isvc-granite-31-8b-fp8</code>. The token is <code>oc whoami -t</code> and is not written to git. TLS uses the service CA. No URL export is required. Override with <code>SANDBOX_MODEL_BASE</code> only for another endpoint. If <code>/v1/models</code> fails, the script still sends chat with that model id. Red Hat's walk-through is <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">Get started with consuming GPU-hosted large language models</a>.</p>
+      <p>Task <strong>6. Ask Granite</strong> does not use the VM. It runs a pod in this project and calls Granite, then Qwen, the same way LiteLLM does in rhdh-agent-sandbox: in-cluster DNS, port 8443, TLS verify off. No LiteMaaS key. HTTP has no header; HTTPS uses <code>oc whoami -t</code> for the oauth-proxy. If nothing answers, the predictors are not in CoreDNS; commands 4 and 5 are a separate path. Red Hat's walk-through is <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">Get started with consuming GPU-hosted large language models</a>.</p>
     </article>
     <article class="step">
       <h2><span>6</span>Ask with ask.py</h2>
-      <p>Task <strong>7. Ask with ask.py</strong> uses the same default Granite URL, then runs <code>python3 examples/ask.py</code> with <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code>, and <code>SSL_CERT_FILE</code>. The script's prompt is one Spanish sentence.</p>
+      <p>Task <strong>7. Ask with ask.py</strong> uses the same in-cluster pod and the Spanish prompt from <code>examples/ask.py</code>. The Dev Spaces tools container cannot resolve <code>sandbox-shared-models</code>; the pod can, when the predictors exist.</p>
     </article>
     <article class="step">
       <h2><span>+</span>OpenShell terminal</h2>

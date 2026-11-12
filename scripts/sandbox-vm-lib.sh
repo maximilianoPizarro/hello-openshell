@@ -32,6 +32,10 @@ export HOME=/root KUBECONFIG=/root/.kube/config PATH=/usr/local/bin:/usr/bin:/bi
 if python3 -c 'import socket; socket.create_connection(("127.0.0.1", 8080), 2)' 2>/dev/null; then
   exit 0
 fi
+if [ ! -x /usr/local/bin/kubectl ]; then
+  echo "kubectl is not installed yet. minikube is still booting."
+  exit 1
+fi
 cat >/etc/systemd/system/hello-openshell-gateway.service <<'UNIT'
 [Unit]
 Description=OpenShell gateway port-forward

@@ -248,7 +248,7 @@ openshell sandbox create \
 
 OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
-Commands 6 and 7 do not use the VM. They call the shared Granite predictor `https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1` with model `isvc-granite-31-8b-fp8`, token `oc whoami -t`, and the workspace service CA. Override with `SANDBOX_MODEL_BASE` only when you need another endpoint. If `/v1/models` fails, the script still sends chat with that model id. Command 8 deletes `minikube-vm`, `rhel-vm`, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+Commands 6 and 7 do not use the VM. They start a short-lived pod in this project and call Granite, then Qwen, the same way LiteLLM does in rhdh-agent-sandbox: `sandbox-shared-models` on port 8443, TLS verify off. There is no LiteMaaS key. HTTP inside the cluster has no Authorization header; HTTPS uses `oc whoami -t` for the oauth-proxy. If CoreDNS has no predictor, the script stops. That does not affect commands 4 and 5. Command 8 deletes `minikube-vm`, `rhel-vm`, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
 
 **Start RHEL terminal** applies [deploy/sandbox-rhel-vm.yaml](deploy/sandbox-rhel-vm.yaml). It is a second guest, `rhel-vm`, cloned from the `rhel9` DataSource with preference `rhel.9`. The user is `cloud-user`. The script writes a password to `~/.config/hello-openshell/rhel.password` and authorizes the same workspace key as the Fedora VM. From the workspace shell:
 

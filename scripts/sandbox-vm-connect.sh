@@ -34,10 +34,12 @@ while [ "${SECONDS}" -lt "${deadline}" ]; do
 
   if err="$(sandbox_vm_ssh true 2>&1)"; then
     if ! sandbox_vm_ssh "python3 -c 'import socket; socket.create_connection((\"127.0.0.1\", 8080), 2)'" 2>/dev/null; then
-      echo "127.0.0.1:8080 is closed in the guest. Restarting the gateway port-forward."
-      if ! sandbox_vm_ensure_gateway; then
-        echo "Port-forward did not start."
-        sandbox_vm_ssh "sudo kubectl -n openshell get pods; echo ---; sudo journalctl -u hello-openshell-gateway -n 30 --no-pager; echo ---; sudo tail -n 30 /var/log/cloud-init-output.log" || true
+      if sandbox_vm_ssh "test -x /usr/local/bin/kubectl"; then
+        echo "127.0.0.1:8080 is closed in the guest. Restarting the gateway port-forward."
+        if ! sandbox_vm_ensure_gateway; then
+          echo "Port-forward did not start."
+          sandbox_vm_ssh "sudo -n env PATH=/usr/local/bin:/usr/bin:/bin kubectl -n openshell get pods; echo ---; sudo -n journalctl -u hello-openshell-gateway -n 30 --no-pager; echo ---; sudo -n tail -n 30 /var/log/cloud-init-output.log" || true
+        fi
       fi
     fi
     if sandbox_vm_ssh "test -f /var/lib/hello-openshell/ready && python3 -c 'import socket; socket.create_connection((\"127.0.0.1\", 8080), 2)'"; then
