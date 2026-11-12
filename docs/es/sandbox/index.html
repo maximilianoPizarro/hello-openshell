@@ -53,7 +53,7 @@
     </section>
     <figure>
       <img src="../../assets/diagrams/sandbox-architecture.jpg" alt="Workspace de Dev Spaces, token de oc whoami y predictor del modelo">
-      <figcaption>El proyecto de usuario suele no tener cuota de GPU. Apuntá las tareas Ask a un predictor que puedas resolver.</figcaption>
+      <figcaption>El proyecto de usuario suele no tener cuota de GPU. Las tareas Ask llaman al predictor Granite compartido en <code>sandbox-shared-models</code>.</figcaption>
     </figure>
     <article class="step">
       <h2><span>1</span>Abrir el workspace</h2>
@@ -61,7 +61,7 @@
     </article>
     <article class="step">
       <h2><span>2</span>Comandos del devfile</h2>
-      <p>Estos son los comandos <code>exec</code>, en el orden de ejecución. <strong>3. Start minikube VM</strong> ya corre <strong>4. Connect minikube gateway</strong> al final. Connect solo hace falta otra vez si la VM ya estaba arriba. <strong>OpenShell version</strong> es opcional: <code>openshell --version</code> (no existe <code>openshell version</code>). Los nombres de las tareas quedan en inglés porque son el texto del IDE.</p>
+      <p>Estos son los comandos <code>exec</code>, en el orden de ejecución. <strong>3. Start minikube VM</strong> ya corre <strong>4. Connect minikube gateway</strong> al final. Connect solo hace falta otra vez si la VM ya estaba arriba. <strong>OpenShell version</strong> es opcional: <code>openshell --version</code> (no existe <code>openshell version</code>). <strong>OpenShell terminal</strong> abre el TUI en vivo después del comando 4: OpenShell 0.1.8 no tiene consola web. Los nombres de las tareas quedan en inglés porque son el texto del IDE.</p>
       <pre><code>1. bash scripts/install-openshell-cli.sh
 2. bash scripts/sandbox-status.sh
 3. bash scripts/sandbox-vm-up.sh
@@ -70,7 +70,8 @@
 6. bash scripts/sandbox-ask.sh curl
 7. bash scripts/sandbox-ask.sh python
 8. bash scripts/sandbox-down.sh
-9. bash scripts/sandbox-vm-inspect.sh</code></pre>
+9. bash scripts/sandbox-vm-inspect.sh
+openshell gateway select minikube &amp;&amp; openshell term</code></pre>
     </article>
     <article class="step">
       <h2><span>3</span>Arrancar la VM</h2>
@@ -99,13 +100,18 @@ openshell sandbox create \
     </article>
     <article class="step">
       <h2><span>5</span>Ask Granite</h2>
-      <p>La tarea <strong>6. Ask Granite</strong> no usa la VM. Corre <code>scripts/sandbox-ask.sh curl</code> contra un predictor que el workspace pueda resolver. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. Definí la URL base primero:</p>
-      <pre><code>export SANDBOX_MODEL_BASE=https://&lt;predictor&gt;.&lt;namespace&gt;.svc.cluster.local:8443/v1</code></pre>
-      <p>El script lista <code>/v1/models</code> y manda un chat completion. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
+      <p>La tarea <strong>6. Ask Granite</strong> no usa la VM. Llama al predictor compartido <code>https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1</code> con el modelo <code>isvc-granite-31-8b-fp8</code>. El token es <code>oc whoami -t</code> y no se escribe en git. TLS usa la CA de servicio. No hace falta exportar una URL. Pisá con <code>SANDBOX_MODEL_BASE</code> solo si querés otro endpoint. Si <code>/v1/models</code> falla, el script igual manda el chat con ese model id. La guía de Red Hat es <a href="https://developers.redhat.com/learn/openshift/get-started-consuming-gpu-hosted-large-language-models-developer-sandbox">consumir los modelos con GPU del sandbox</a>.</p>
     </article>
     <article class="step">
       <h2><span>6</span>Ask with ask.py</h2>
-      <p>La tarea <strong>7. Ask with ask.py</strong> hace el mismo descubrimiento y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. También necesita <code>SANDBOX_MODEL_BASE</code>. El prompt del script es una frase en español.</p>
+      <p>La tarea <strong>7. Ask with ask.py</strong> usa la misma URL de Granite por defecto y después corre <code>python3 examples/ask.py</code> con <code>OPENAI_BASE_URL</code>, <code>MODEL_NAME</code>, <code>RHOAI_API_TOKEN</code> y <code>SSL_CERT_FILE</code>. El prompt del script es una frase en español.</p>
+    </article>
+    <article class="step">
+      <h2><span>+</span>OpenShell terminal</h2>
+      <p>OpenShell 0.1.8 no tiene consola web. El tablero en vivo es <code>openshell term</code>: tres paneles para gateways, providers y sandboxes. Con <code>Tab</code> cambiás de panel y con Enter abrís el detalle. Corré la tarea <strong>OpenShell terminal</strong> en la terminal del workspace después del comando 4, o escribí:</p>
+      <pre><code>openshell gateway select minikube
+openshell term</code></pre>
+      <p>Si el panel de la tarea no es un TTY, pegá los mismos comandos en la shell del workspace. Notas oficiales: <a href="https://docs.nvidia.com/openshell/dev/how-it-works/sandboxes/overview">Manage Sandboxes</a>.</p>
     </article>
     <article class="step">
       <h2><span>7</span>Clean</h2>

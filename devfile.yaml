@@ -121,6 +121,15 @@ commands:
       group:
         kind: run
         isDefault: false
+  - id: openshell-terminal
+    exec:
+      component: tools
+      commandLine: bash -lc 'bash scripts/install-openshell-cli.sh && openshell gateway select minikube && openshell term'
+      workingDir: ${PROJECT_SOURCE}
+      label: OpenShell terminal
+      group:
+        kind: run
+        isDefault: false
   - id: install-openshell-cli-on-start
     exec:
       component: tools

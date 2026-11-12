@@ -16,7 +16,7 @@
 | Track | Where it runs | What serves the model |
 | --- | --- | --- |
 | Local | Podman on Linux, macOS, or Windows | Ollama `llama3.2:1b` (3 GiB cap) |
-| Developer Sandbox | Dev Spaces, gateway on an OpenShift Virtualization VM | An OpenAI-compatible predictor the workspace can reach |
+| Developer Sandbox | Dev Spaces, gateway on an OpenShift Virtualization VM | Shared Granite in `sandbox-shared-models` |
 | OpenShift AI | A cluster you administer | Granite 3.3 2B on one NVIDIA GPU |
 | Cloud Shell | minikube inside Cloud Shell | Gateway only. This kernel cannot run a sandbox. |
 
@@ -216,13 +216,14 @@ The sandbox project cannot install the gateway. It cannot create CRDs, namespace
 | 3. Start minikube VM | `bash scripts/sandbox-vm-up.sh` (also runs the connect script) |
 | 4. Connect minikube gateway | `bash scripts/sandbox-vm-connect.sh` |
 | 5. Create minikube sandbox | `bash scripts/sandbox-vm-sandbox.sh` |
-| 6. Ask Granite | `bash scripts/sandbox-ask.sh curl` (needs `SANDBOX_MODEL_BASE`) |
-| 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` (needs `SANDBOX_MODEL_BASE`) |
+| 6. Ask Granite | `bash scripts/sandbox-ask.sh curl` |
+| 7. Ask with ask.py | `bash scripts/sandbox-ask.sh python` |
 | 8. Clean | `bash scripts/sandbox-down.sh` |
 | 9. Inspect cluster | `bash scripts/sandbox-vm-inspect.sh` |
 | Start RHEL terminal | `bash scripts/sandbox-rhel-up.sh` |
+| OpenShell terminal | `openshell gateway select minikube && openshell term` |
 
-**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand.
+**OpenShell version** is optional. It repeats the install and runs `openshell --version`. There is no `openshell version` subcommand. **OpenShell terminal** opens the live TUI dashboard (`openshell term`) for gateways, providers, and sandboxes. Run it in the workspace terminal after command 4. There is no web console in OpenShell 0.1.8.
 
 Command 3 applies [deploy/sandbox-minikube-vm.yaml](deploy/sandbox-minikube-vm.yaml). OpenShift Virtualization clones the `fedora` DataSource in `openshift-virtualization-os-images` onto a 30Gi disk. The instance type is `u1.large` (2 vCPU, 8Gi) and `runStrategy` is `Manual`, which is what Developer Sandbox admits. There is no custom image: the sandbox shuts those down. [scripts/sandbox-vm-up.sh](scripts/sandbox-vm-up.sh) starts the VM with the start subresource. Inline cloud-init names `user: fedora` and curls [scripts/minikube-guest-boot.sh](scripts/minikube-guest-boot.sh) at the workspace commit. Admission allows 2048 bytes after the sandbox webhook appends its key. An inline copy of that script was rejected at 1622 bytes. The guest script runs as root, so `minikube start` passes `--force` (`--driver=podman --container-runtime=containerd --memory=3072 --cpus=2 --disk-size=10g`). Without `--force`, minikube 1.39 exits with `DRV_AS_ROOT`. The script also exits if `landlock` is missing from `/sys/kernel/security/lsm`. The containers use that guest kernel. Developer Sandbox stops Linux VMs after one hour. Run command 3 again after that. If the VM object already exists, the script leaves the disk and cloud-init alone, so a changed boot script needs **8. Clean** first. The first successful boot is the one that installs the gateway.
 
@@ -247,7 +248,7 @@ openshell sandbox create \
 
 OpenShell 0.1.8 needs Landlock ABI v3 on the guest. On 11 Nov 2026 this command printed `ok` and the phase was `Completed`. If a later agent exits, read `openshell logs model-check`. Do not pass OpenShift SCC values into this minikube.
 
-Commands 6 and 7 do not use the VM. There is no fixed shared-model hostname. Set `SANDBOX_MODEL_BASE` to an OpenAI-compatible `/v1` URL the workspace can resolve before running them. Command 8 deletes `minikube-vm`, `rhel-vm`, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
+Commands 6 and 7 do not use the VM. They call the shared Granite predictor `https://isvc-granite-31-8b-fp8-predictor.sandbox-shared-models.svc.cluster.local:8443/v1` with model `isvc-granite-31-8b-fp8`, token `oc whoami -t`, and the workspace service CA. Override with `SANDBOX_MODEL_BASE` only when you need another endpoint. If `/v1/models` fails, the script still sends chat with that model id. Command 8 deletes `minikube-vm`, `rhel-vm`, and the other objects labeled `app.kubernetes.io/part-of=hello-openshell`.
 
 **Start RHEL terminal** applies [deploy/sandbox-rhel-vm.yaml](deploy/sandbox-rhel-vm.yaml). It is a second guest, `rhel-vm`, cloned from the `rhel9` DataSource with preference `rhel.9`. The user is `cloud-user`. The script writes a password to `~/.config/hello-openshell/rhel.password` and authorizes the same workspace key as the Fedora VM. From the workspace shell:
 
