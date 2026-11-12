@@ -5,9 +5,10 @@ import urllib.request
 
 # Kubernetes sandboxes have no DNS. OpenShell injects host.openshell.internal
 # when server.hostGatewayIP is set. If getaddrinfo still fails, map the name
-# to OPENSHELL_HOST_IP (the guest address the supervisor can dial).
+# to ASK_HOST_IP (the guest address the supervisor can dial).
+# Do not use OPENSHELL_* env keys: the CLI reserves that prefix.
 _HOST = "host.openshell.internal"
-_HOST_IP = os.environ.get("OPENSHELL_HOST_IP", "").strip()
+_HOST_IP = os.environ.get("ASK_HOST_IP", "").strip()
 _orig_getaddrinfo = socket.getaddrinfo
 
 

@@ -80,10 +80,28 @@ sandbox_gateway_vm() {
   esac
 }
 
-sandbox_gateway_start_hint() {
+sandbox_gateway_start_task() {
   case "${SANDBOX_GATEWAY:-minikube}" in
-    microshift) echo "B1. Clean, then B2. Start RHEL VM and Ollama" ;;
-    *) echo "A1. Clean, then A2. Start minikube VM and Ollama" ;;
+    microshift) echo "B2. Start RHEL VM and Ollama" ;;
+    *) echo "A2. Start minikube VM and Ollama" ;;
+  esac
+}
+
+sandbox_gateway_clean_task() {
+  case "${SANDBOX_GATEWAY:-minikube}" in
+    microshift) echo "B1. Clean" ;;
+    *) echo "A1. Clean" ;;
+  esac
+}
+
+sandbox_gateway_start_hint() {
+  sandbox_gateway_start_task
+}
+
+sandbox_gateway_other_vm() {
+  case "${SANDBOX_GATEWAY:-minikube}" in
+    microshift) echo "${SANDBOX_VM_NAME}" ;;
+    *) echo "${RHEL_VM_NAME}" ;;
   esac
 }
 

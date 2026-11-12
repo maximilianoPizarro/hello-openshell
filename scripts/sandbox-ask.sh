@@ -42,9 +42,18 @@ fi
 vm_name="$(sandbox_gateway_vm)"
 vm_status="$(oc get vm "${vm_name}" -o jsonpath='{.status.printableStatus}' 2>/dev/null || true)"
 if [ "${vm_status}" != "Running" ]; then
-  echo "${vm_name} is ${vm_status:-missing}. Run $(sandbox_gateway_start_hint) first."
+  other_vm="$(sandbox_gateway_other_vm)"
+  other_status="$(oc get vm "${other_vm}" -o jsonpath='{.status.printableStatus}' 2>/dev/null || true)"
+  echo "${vm_name} is ${vm_status:-missing}."
   echo "The Ask tasks run examples/ask.py inside an OpenShell sandbox on that gateway."
-  echo "Quota cannot hold two u1.large VMs plus Ollama. Use A1. Clean or B1. Clean before switching guests."
+  if [ "${other_status}" = "Running" ]; then
+    echo "${other_vm} is Running. Quota cannot hold two u1.large VMs plus Ollama."
+    echo "Run $(sandbox_gateway_clean_task), then $(sandbox_gateway_start_task)."
+  elif [ -z "${vm_status}" ]; then
+    echo "The VM object is gone. Run $(sandbox_gateway_start_task). Do not Clean: that also deletes Ollama."
+  else
+    echo "Run $(sandbox_gateway_start_task) to start it. Developer Sandbox stops Linux VMs after one hour."
+  fi
   exit 1
 fi
 
@@ -86,7 +95,7 @@ openshell sandbox create \
   --env OPENAI_API_KEY=fake \
   --env "ASK_PROMPT=${PROMPT}" \
   --env "ASK_LIST_MODELS=${LIST_MODELS}" \
-  --env "OPENSHELL_HOST_IP=${host_ip}" \
+  --env "ASK_HOST_IP=${host_ip}" \
   --no-credential-warnings \
   -- /usr/bin/python3.12 -c "${ask_src}"
 openshell sandbox list
